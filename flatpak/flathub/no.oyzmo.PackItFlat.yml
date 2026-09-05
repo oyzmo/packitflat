@@ -1,0 +1,109 @@
+# Flatpak manifest for Pack It Flat, in the form Flathub takes.
+#
+# THIS FILE IS NOT USED BY ./makeflatpak.sh. It is the copy for a Flathub
+# submission, kept here so it stays in step with the real one beside it
+# (flatpak/no.oyzmo.PackItFlat.yml) — that one builds the working tree, this one
+# builds a published tag.
+#
+# HOW IT IS USED
+#
+#   1. Publish this repository and tag a release, e.g. v0.20.0.
+#   2. Fork github.com/flathub/flathub with "copy the master branch only"
+#      UNCHECKED, and branch from `new-pr`:
+#        git clone --branch=new-pr git@github.com:<you>/flathub.git
+#        cd flathub && git checkout -b packitflat new-pr
+#   3. Copy THIS file to the root of that checkout, named exactly
+#      no.oyzmo.PackItFlat.yml, and copy generated-sources.json beside it.
+#   4. Fill in the two placeholders marked FILL IN below.
+#   5. Check it the way the reviewers do:
+#        flatpak install flathub org.flatpak.Builder
+#        flatpak run --command=flatpak-builder-lint org.flatpak.Builder \
+#            manifest no.oyzmo.PackItFlat.yml
+#      and build it once, offline, exactly as the build service will:
+#        flatpak run org.flatpak.Builder --force-clean --user --sandbox \
+#            --install-deps-from=flathub build-dir no.oyzmo.PackItFlat.yml
+#   6. Commit both files, push, and open a pull request against the `new-pr`
+#      branch titled "Add no.oyzmo.PackItFlat".
+#
+# WHAT THE REVIEWERS WILL ASK ABOUT
+#
+# The two permissions below. Flathub's rule is that static permissions are kept
+# to a minimum and a portal is used wherever one covers the job. Both are
+# answered in the metainfo, and both have precedent on Flathub today:
+# io.github.flattool.Warehouse ships org.freedesktop.Flatpak=talk, and
+# org.gnome.Builder ships that plus filesystems=host. The sentence worth putting
+# in the pull request is that the app is fully usable without the host
+# connection — every file is still written; only the optional "build it now"
+# button turns itself off, with an explanation and a command to copy.
+
+app-id: no.oyzmo.PackItFlat
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: packitflat
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+
+  # The app reads the user's project folders and writes the manifest, desktop
+  # file, metainfo and icons next to them. That is the whole job, and the file
+  # chooser portal cannot express "this folder and everything the build will
+  # create in it", so --filesystem=home is asked for and justified in the
+  # metainfo. Never --filesystem=host: nothing outside the user's own files is
+  # any of this app's business.
+  - --filesystem=home
+
+  # Running flatpak-builder happens on the host, through flatpak-spawn. Without
+  # this the app still writes every file — only the optional "build it now"
+  # button is disabled, with an explanation and a command to copy.
+  - --talk-name=org.freedesktop.Flatpak
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/packitflat/cargo
+
+modules:
+  - name: packitflat
+    buildsystem: simple
+    build-commands:
+      # Crates come from generated-sources.json, so the build stays offline.
+      - cargo --offline fetch --manifest-path Cargo.toml --verbose
+      - cargo --offline build --release --verbose
+      - install -Dm755 target/release/packitflat /app/bin/packitflat
+      - install -Dm644 data/no.oyzmo.PackItFlat.desktop
+          /app/share/applications/no.oyzmo.PackItFlat.desktop
+      - install -Dm644 data/no.oyzmo.PackItFlat.metainfo.xml
+          /app/share/metainfo/no.oyzmo.PackItFlat.metainfo.xml
+      - install -Dm644 data/no.oyzmo.PackItFlat.svg
+          /app/share/icons/hicolor/scalable/apps/no.oyzmo.PackItFlat.svg
+      # flatpak-builder compiles the schemas itself once they are installed here.
+      # Without this the app still runs: it keeps preferences in its own file.
+      - install -Dm644 data/no.oyzmo.PackItFlat.gschema.xml
+          /app/share/glib-2.0/schemas/no.oyzmo.PackItFlat.gschema.xml
+      # The GPL wants its text to travel with the binary.
+      - install -Dm644 COPYING /app/share/licenses/no.oyzmo.PackItFlat/COPYING
+    sources:
+      # FILL IN: the repository this code is published at, and the exact commit
+      # the tag points at. Flathub builds only from a public address — a `dir`
+      # source, which the manifest beside this one uses, is not accepted. The
+      # tag is a label and can be moved; `commit` is what makes the build
+      # repeatable, so both are given and the commit is what actually decides.
+      - type: git
+        url: https://github.com/oyzmo/packitflat.git
+        tag: v0.20.1
+        commit: 0000000000000000000000000000000000000000
+        x-checker-data:
+          type: git
+          tag-pattern: ^v([\d.]+)$
+
+      # The crate list, generated by flatpak/cargo-sources.py from Cargo.lock.
+      # It is committed to the Flathub repository beside this manifest, not
+      # fetched from the source repository: the build has no network, and this
+      # is read before the build starts.
+      - generated-sources.json

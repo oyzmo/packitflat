@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.10"/>
+  <requires lib="libadwaita" version="1.5"/>
+
+  <menu id="primary_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Preferences</attribute>
+        <attribute name="action">win.preferences</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_About Pack It Flat</attribute>
+        <attribute name="action">app.about</attribute>
+      </item>
+    </section>
+  </menu>
+
+  <template class="PifWindow" parent="AdwApplicationWindow">
+    <property name="title" translatable="yes">Pack It Flat</property>
+    <property name="default-width">880</property>
+    <property name="default-height">680</property>
+    <!-- Adaptive down to a phone: the brief requires 360px. -->
+    <property name="width-request">360</property>
+    <property name="height-request">294</property>
+
+    <property name="content">
+      <object class="AdwNavigationView" id="nav">
+
+        <!-- Welcome page -->
+        <child>
+          <object class="AdwNavigationPage">
+            <property name="tag">welcome</property>
+            <property name="title" translatable="yes">Pack It Flat</property>
+            <property name="child">
+              <object class="AdwToolbarView">
+                <child type="top">
+                  <object class="AdwHeaderBar">
+                    <child type="end">
+                      <object class="GtkMenuButton">
+                        <property name="icon-name">open-menu-symbolic</property>
+                        <property name="menu-model">primary_menu</property>
+                        <property name="tooltip-text" translatable="yes">Main menu</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <property name="content">
+                  <object class="AdwStatusPage">
+                    <property name="icon-name">no.oyzmo.PackItFlat</property>
+                    <property name="title" translatable="yes">Pack It Flat</property>
+                    <property name="description" translatable="yes">Turn a program on your computer into a Flatpak — an app anyone on Linux can install. You don't need to know how Flatpak works; you'll be asked plain questions and shown what each answer does.</property>
+                    <property name="child">
+                      <!-- Without a clamp the buttons stretch the full width of
+                           the window on a desktop screen. -->
+                      <object class="AdwClamp">
+                        <property name="maximum-size">420</property>
+                        <property name="tightening-threshold">380</property>
+                        <property name="child">
+                      <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <property name="spacing">24</property>
+                        <property name="width-request">300</property>
+
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">10</property>
+                            <child>
+                              <object class="GtkButton" id="new_button">
+                                <property name="label" translatable="yes">Start with a folder on this computer</property>
+                                <style>
+                                  <class name="suggested-action"/>
+                                  <class name="pill"/>
+                                </style>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="import_button">
+                                <property name="label" translatable="yes">Open a manifest I already have</property>
+                                <style>
+                                  <class name="pill"/>
+                                </style>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="clone_button">
+                                <property name="label" translatable="yes">Start from a Git address</property>
+                                <property name="tooltip-text" translatable="yes">Paste a link to a repository — the code is fetched, looked at, and the manifest points back at the address</property>
+                                <style>
+                                  <class name="pill"/>
+                                </style>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="template_button">
+                                <property name="label" translatable="yes">Start from a template</property>
+                                <property name="tooltip-text" translatable="yes">For when there's no code yet: a project set up the way that kind of app usually is</property>
+                                <style>
+                                  <class name="pill"/>
+                                </style>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+
+                        <child>
+                          <!-- Shown only when this computer isn't ready to build
+                               anything: better said now than after seven steps. -->
+                          <object class="AdwPreferencesGroup" id="setup_group">
+                            <property name="title" translatable="yes">This computer isn't quite ready</property>
+                            <property name="description" translatable="yes">You can write a manifest anyway — this only matters when you come to build it.</property>
+                            <property name="visible">False</property>
+                            <child>
+                              <object class="GtkListBox" id="setup_list">
+                                <property name="selection-mode">none</property>
+                                <style>
+                                  <class name="boxed-list"/>
+                                </style>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+
+                        <child>
+                          <object class="AdwPreferencesGroup" id="recent_group">
+                            <property name="title" translatable="yes">Pick up where you left off</property>
+                            <property name="visible">False</property>
+                            <child>
+                              <object class="GtkListBox" id="recent_list">
+                                <property name="selection-mode">none</property>
+                                <style>
+                                  <class name="boxed-list"/>
+                                </style>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+
+                        <child>
+                          <object class="AdwPreferencesGroup">
+                            <child>
+                              <object class="AdwExpanderRow">
+                                <property name="title" translatable="yes">What is a Flatpak?</property>
+                                <child>
+                                  <object class="AdwActionRow">
+                                    <property name="title" translatable="yes">A Flatpak is one file that contains your app and everything it needs to run, so it works the same on any Linux computer without installing anything else. The recipe for building one is called a manifest — a text file listing where your code is, what it needs, and what the app is allowed to do. This app writes that file for you.</property>
+                                    <property name="title-lines">0</property>
+                                    <property name="use-markup">False</property>
+                                    <style>
+                                      <class name="dim-label"/>
+                                    </style>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                        </property>
+                      </object>
+                    </property>
+                  </object>
+                </property>
+
+                <child type="bottom">
+                  <object class="GtkBox">
+                    <property name="margin-start">12</property>
+                    <property name="margin-end">12</property>
+                    <property name="margin-top">4</property>
+                    <property name="margin-bottom">4</property>
+                    <child>
+                      <object class="GtkLabel" id="version_label">
+                        <property name="hexpand">True</property>
+                        <property name="halign">end</property>
+                        <style>
+                          <class name="dim-label"/>
+                          <class name="caption"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </child>
+
+        <!-- Project summary page -->
+        <child>
+          <object class="AdwNavigationPage" id="project_page">
+            <property name="tag">project</property>
+            <property name="title" translatable="yes">Project</property>
+            <property name="child">
+              <object class="AdwToolbarView">
+                <child type="top">
+                  <object class="AdwHeaderBar"/>
+                </child>
+                <property name="content">
+                  <object class="AdwPreferencesPage">
+
+                    <child>
+                      <object class="AdwPreferencesGroup">
+                        <property name="description" translatable="yes">Answer a few questions and this writes the manifest for you, or open everything at once in the editor. Both work on the same project, and you can switch whenever you like.</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="halign">center</property>
+                            <property name="spacing">10</property>
+                            <child>
+                              <object class="GtkButton" id="wizard_button">
+                                <property name="label" translatable="yes">Set it up step by step</property>
+                                <style>
+                                  <class name="suggested-action"/>
+                                  <class name="pill"/>
+                                </style>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="editor_button">
+                                <property name="label" translatable="yes">Open the editor</property>
+                                <style>
+                                  <class name="pill"/>
+                                </style>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="build_button">
+                                <property name="label" translatable="yes">Build it</property>
+                                <style>
+                                  <class name="pill"/>
+                                </style>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="AdwPreferencesGroup" id="detected_group">
+                        <property name="title" translatable="yes">Here's what I found</property>
+                        <property name="visible">False</property>
+                        <child>
+                          <object class="AdwActionRow" id="detected_row">
+                            <property name="subtitle-lines">0</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="AdwPreferencesGroup">
+                        <property name="title" translatable="yes">The app being packaged</property>
+                        <child>
+                          <object class="AdwActionRow" id="row_app_id">
+                            <property name="title" translatable="yes">App ID</property>
+                            <property name="subtitle" translatable="yes">The app's unique name, written backwards like a website address</property>
+                            <property name="subtitle-lines">0</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="AdwActionRow" id="row_runtime">
+                            <property name="title" translatable="yes">Built on</property>
+                            <property name="subtitle-lines">0</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="AdwActionRow" id="row_command">
+                            <property name="title" translatable="yes">Starts by running</property>
+                            <property name="subtitle-lines">0</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="AdwActionRow" id="row_source">
+                            <property name="title" translatable="yes">Code comes from</property>
+                            <property name="subtitle-lines">0</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="AdwPreferencesGroup" id="notes_group">
+                        <property name="title" translatable="yes">Worth knowing about this file</property>
+                        <property name="description" translatable="yes">Nothing was thrown away — everything below was kept exactly as it was written.</property>
+                        <property name="visible">False</property>
+                        <child>
+                          <object class="GtkListBox" id="notes_list">
+                            <property name="selection-mode">none</property>
+                            <style>
+                              <class name="boxed-list"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="AdwPreferencesGroup">
+                        <property name="title" translatable="yes">The manifest so far</property>
+                        <property name="description" translatable="yes">This is the file that will be written. You never have to edit it by hand.</property>
+                        <child>
+                          <object class="GtkScrolledWindow">
+                            <property name="height-request">260</property>
+                            <property name="hscrollbar-policy">automatic</property>
+                            <style>
+                              <class name="card"/>
+                            </style>
+                            <property name="child">
+                              <object class="GtkTextView" id="yaml_view">
+                                <property name="editable">False</property>
+                                <property name="monospace">True</property>
+                                <property name="top-margin">12</property>
+                                <property name="bottom-margin">12</property>
+                                <property name="left-margin">12</property>
+                                <property name="right-margin">12</property>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                  </object>
+                </property>
+              </object>
+            </property>
+          </object>
+        </child>
+
+      </object>
+    </property>
+  </template>
+</interface>

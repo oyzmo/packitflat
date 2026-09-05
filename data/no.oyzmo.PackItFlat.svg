@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="#7FA07A"/>
+  <!-- A carton folded flat: two panels, a crease down the middle, flaps open. -->
+  <g transform="translate(64 66)">
+    <rect x="-42" y="-30" width="84" height="52" rx="4" fill="#F4E7D3"/>
+    <path d="M-42 -30 L-30 -44 L30 -44 L42 -30 Z" fill="#F4E7D3" opacity="0.55"/>
+    <path d="M0 -30 L0 22" stroke="#8A6A50" stroke-width="3" stroke-linecap="round"
+          stroke-dasharray="6 7"/>
+    <path d="M-42 -30 L42 -30" stroke="#4A3428" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-24 -8 L24 -8 M-24 6 L10 6" stroke="#8A6A50" stroke-width="4"
+          stroke-linecap="round" opacity="0.5"/>
+  </g>
+</svg>

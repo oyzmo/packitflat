@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>no.oyzmo.PackItFlat</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>Pack It Flat</name>
+  <summary>Make a Flatpak without knowing what a manifest is</summary>
+
+  <description>
+    <p>
+      Pack It Flat turns a program on your computer into a Flatpak — an app
+      anyone on Linux can install. It asks plain questions, explains what every
+      answer does, and writes the manifest, desktop entry, app information and
+      icons for you.
+    </p>
+    <p>
+      It looks at your project folder and works out how it is built, suggests
+      settings that already work, and describes each permission in terms of what
+      the app would be able to do rather than in Flatpak's own vocabulary. When a
+      build fails, it explains the failure in a sentence and offers a fix.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">no.oyzmo.PackItFlat.desktop</launchable>
+  <url type="homepage">https://oyzmo.no</url>
+
+  <!-- FILL IN BEFORE SUBMITTING TO FLATHUB.
+       These addresses have to resolve: Flathub fetches every picture while it
+       builds the listing, and a wrong one fails the submission rather than
+       showing a gap. The files are in docs/screenshots/ in this repository, so
+       once it is public the addresses are its raw file links — with the
+       account name, the repository name and the branch as they really are.
+       Codeberg's shape is https://codeberg.org/<user>/<repo>/raw/branch/main/…
+       Screenshots are fetched over the network, so they must be https. -->
+  <screenshots>
+    <screenshot type="default">
+      <caption>The welcome screen</caption>
+      <image>https://raw.githubusercontent.com/oyzmo/packitflat/main/docs/screenshots/welcome.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Permissions, said as what the app would be able to do</caption>
+      <image>https://raw.githubusercontent.com/oyzmo/packitflat/main/docs/screenshots/permissions.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Editor mode, with the manifest as text</caption>
+      <image>https://raw.githubusercontent.com/oyzmo/packitflat/main/docs/screenshots/editor.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A failed build, explained in a sentence</caption>
+      <image>https://raw.githubusercontent.com/oyzmo/packitflat/main/docs/screenshots/build.png</image>
+    </screenshot>
+  </screenshots>
+
+  <developer id="no.oyzmo">
+    <name>oyzmo</name>
+  </developer>
+
+  <!-- Nothing in this app is objectionable content; it edits text files. -->
+  <content_rating type="oars-1.1"/>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </supports>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#7FA07A</color>
+    <color type="primary" scheme_preference="dark">#2E2019</color>
+  </branding>
+
+  <releases>
+    <release version="0.20.1" date="2026-09-05">
+      <description>
+        <p>Ready for a Flathub submission: screenshots and an https homepage in the app information, and the submission manifest kept in step with the one built here.</p>
+      </description>
+    </release>
+    <release version="0.20.0" date="2026-09-05">
+      <description>
+        <p>A hand-written build now installs the icon, menu entry and app information even when the manifest was written by an older version.</p>
+      </description>
+    </release>
+    <release version="0.19.0" date="2026-09-05">
+      <description>
+        <p>Every page explains itself: a What is this? row on the nine pages that had none or only a field-level one.</p>
+      </description>
+    </release>
+    <release version="0.18.2" date="2026-09-05">
+      <description>
+        <p>Dev harnesses: only the visible page's explanation, a project path when one is needed, no shell line built from an empty command.</p>
+      </description>
+    </release>
+    <release version="0.18.1" date="2026-09-04">
+      <description>
+        <p>Every page now fits a phone screen, including the editor's source list.</p>
+      </description>
+    </release>
+    <release version="0.18.0" date="2026-09-04">
+      <description>
+        <p>Downloads and builds now use the Flatpak installation this computer actually keeps Flathub in.</p>
+      </description>
+    </release>
+    <release version="0.17.1" date="2026-09-04">
+      <description>
+        <p>The editor fits a phone screen, the saved copy keeps up with typing, and a manifest that cannot be read is explained rather than quoted.</p>
+      </description>
+    </release>
+    <release version="0.17.0" date="2026-09-04">
+      <description>
+        <p>The licence picker is a searchable list that stores what you chose; the step dots no longer draw over the status text; install suggestions match your distribution.</p>
+      </description>
+    </release>
+    <release version="0.16.0" date="2026-09-04">
+      <description>
+        <p>A hand-written build now installs the desktop entry, icon and metainfo, not just the binary.</p>
+      </description>
+    </release>
+    <release version="0.15.0" date="2026-09-04">
+      <description>
+        <p>Building now leaves a .flatpak file next to the manifest instead of only a build folder.</p>
+      </description>
+    </release>
+    <release version="0.14.0" date="2026-09-04">
+      <description>
+        <p>The build page refuses to start a build whose dependency list was never prepared.</p>
+      </description>
+    </release>
+    <release version="0.13.1" date="2026-09-04">
+      <description>
+        <p>The licence picker's search works again: it filters on more than the label, and matches anywhere in it.</p>
+      </description>
+    </release>
+    <release version="0.13.0" date="2026-09-04">
+      <description>
+        <p>Warn before the build when a CMake or Meson project has no install rule, and translate the failure when it happens anyway.</p>
+      </description>
+    </release>
+    <release version="0.12.0" date="2026-09-04">
+      <description>
+        <p>C and C++ projects that fetch their own dependencies with CMake are now recognised, explained before the build, and named properly when a build fails on one.</p>
+      </description>
+    </release>
+    <release version="0.11.0" date="2026-09-04">
+      <description>
+        <p>Recent projects no longer double up, Tab goes straight to the text box, the manifest pane stops stacking duplicate fields, writing offers to build straight away, and the build checklist's fix button takes you to the field.</p>
+      </description>
+    </release>
+    <release version="0.10.0" date="2026-09-04">
+      <description>
+        <p>Recent projects can be taken off the list, with a note saying plainly that the project folder itself is untouched.</p>
+      </description>
+    </release>
+    <release version="0.9.2" date="2026-09-04">
+      <description>
+        <p>The compiler path is written into the module's build options as well as the manifest's, and a source folder that leaves Cargo.toml behind is now flagged before the build.</p>
+      </description>
+    </release>
+    <release version="0.9.1" date="2026-09-04">
+      <description>
+        <p>Fixed: a project using Rust, Node or another SDK extension now gets the append-path line the build needs, and “cargo: command not found” is explained as what it is instead of being blamed on flatpak-builder.</p>
+      </description>
+    </release>
+    <release version="0.9.0" date="2026-09-04">
+      <description>
+        <p>After writing, a way straight back to the start; and on the build page, a button that opens the build in a terminal window that stays open.</p>
+      </description>
+    </release>
+    <release version="0.8.0" date="2026-09-04">
+      <description>
+        <p>C and C++ named in the build tools list even though they need nothing, explanations that scroll themselves into view when opened, a taller window, and lighter example text in empty boxes.</p>
+      </description>
+    </release>
+    <release version="0.7.0" date="2026-09-04">
+      <description>
+        <p>Start from a Git address: paste a repository link, the code is fetched once so the app can look at it, and the manifest points back at the repository pinned to the exact revision.</p>
+      </description>
+    </release>
+    <release version="0.6.0" date="2026-09-04">
+      <description>
+        <p>The manifest text now has proper YAML highlighting, line numbers and a colour scheme that follows the desktop.</p>
+      </description>
+    </release>
+    <release version="0.5.0" date="2026-09-04">
+      <description>
+        <p>Dependencies prepared for offline builds — the crate list written without any extra tools — plus six starting templates and a small library of ready-made modules.</p>
+      </description>
+    </release>
+    <release version="0.4.0" date="2026-09-04">
+      <description>
+        <p>Building: a checklist of what this computer still needs, a live log with a sentence above it saying what is happening, and failures explained with a button that fixes them.</p>
+      </description>
+    </release>
+    <release version="0.3.0" date="2026-09-04">
+      <description>
+        <p>Permissions in plain language with a live risk summary, and generation of the desktop entry, the store description with its age rating, and the icon.</p>
+      </description>
+    </release>
+    <release version="0.2.0" date="2026-09-03">
+      <description>
+        <p>Editor mode: a sidebar of the manifest's parts, forms shared with the guided steps, and the manifest as text that syncs both ways without ever overwriting what you are typing.</p>
+      </description>
+    </release>
+    <release version="0.1.0" date="2026-09-03">
+      <description>
+        <p>Guided setup: five steps that ask what the app is, what it runs on, where the code comes from and how it is built, then write the manifest.</p>
+      </description>
+    </release>
+    <release version="0.0.1" date="2026-09-03">
+      <description>
+        <p>
+          First working skeleton: welcome page, project model, and importing an
+          existing YAML or JSON manifest with a report of anything it could not
+          edit.
+        </p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -1,0 +1,603 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.12"/>
+  <requires lib="libadwaita" version="1.5"/>
+
+  <menu id="add_source_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">A folder on this computer</attribute>
+        <attribute name="action">editor.add-folder</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Code from a Git repository</attribute>
+        <attribute name="action">editor.add-git</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">An archive to download</attribute>
+        <attribute name="action">editor.add-archive</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">A single file</attribute>
+        <attribute name="action">editor.add-file</attribute>
+      </item>
+    </section>
+  </menu>
+
+  <template class="PifEditor" parent="AdwNavigationPage">
+    <property name="tag">editor</property>
+    <property name="title" translatable="yes">Editor</property>
+    <property name="child">
+      <!-- A split view keeps both halves side by side however narrow the window
+           gets, so its minimum width became the window's: asked for 360px the
+           editor rendered 676. Collapsed, it shows one at a time with the back
+           button, which is what the sidebar pattern is for. The bin's own
+           width-request is what lets the window shrink that far in the first
+           place — it measures itself, not its child. -->
+      <object class="AdwBreakpointBin">
+        <property name="width-request">360</property>
+        <property name="height-request">300</property>
+        <child>
+          <object class="AdwBreakpoint">
+            <condition>max-width: 640px</condition>
+            <setter object="split" property="collapsed">True</setter>
+            <setter object="write_button_content" property="label"></setter>
+            <setter object="build_button_content" property="label"></setter>
+            <setter object="guided_button_content" property="label"></setter>
+          </object>
+        </child>
+        <property name="child">
+      <object class="AdwNavigationSplitView" id="split">
+        <property name="min-sidebar-width">220</property>
+        <property name="max-sidebar-width">280</property>
+
+        <property name="sidebar">
+          <object class="AdwNavigationPage">
+            <property name="title" translatable="yes">Parts</property>
+            <property name="child">
+              <object class="AdwToolbarView">
+                <child type="top">
+                  <object class="AdwHeaderBar">
+                    <child type="end">
+                      <object class="GtkButton" id="guided_button">
+                        <property name="child">
+                          <object class="AdwButtonContent" id="guided_button_content">
+                            <property name="icon-name">view-list-bullet-symbolic</property>
+                            <property name="label" translatable="yes">Guided steps</property>
+                          </object>
+                        </property>
+                        <property name="tooltip-text" translatable="yes">Work through the same project as questions instead. Nothing is lost.</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <property name="content">
+                  <object class="GtkScrolledWindow">
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="child">
+                      <object class="GtkListBox" id="tree">
+                        <property name="selection-mode">single</property>
+                        <style>
+                          <class name="navigation-sidebar"/>
+                        </style>
+                      </object>
+                    </property>
+                  </object>
+                </property>
+              </object>
+            </property>
+          </object>
+        </property>
+
+        <property name="content">
+          <object class="AdwNavigationPage" id="detail_page">
+            <property name="title" translatable="yes">The manifest</property>
+            <property name="child">
+              <object class="AdwToolbarView">
+                <child type="top">
+                  <object class="AdwHeaderBar">
+                    <child type="end">
+                      <!-- The label is what pushes the editor's minimum width
+                           past a phone: an AdwButtonContent so a breakpoint can
+                           take the words away and leave the icon, rather than
+                           the whole header refusing to fit. -->
+                      <object class="GtkButton" id="write_button">
+                        <property name="tooltip-text" translatable="yes">Write the manifest and the files beside it</property>
+                        <property name="child">
+                          <object class="AdwButtonContent" id="write_button_content">
+                            <property name="icon-name">document-save-symbolic</property>
+                            <property name="label" translatable="yes">Write the manifest</property>
+                          </object>
+                        </property>
+                        <style>
+                          <class name="suggested-action"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child type="end">
+                      <object class="GtkButton" id="build_button">
+                        <property name="child">
+                          <object class="AdwButtonContent" id="build_button_content">
+                            <property name="icon-name">system-run-symbolic</property>
+                            <property name="label" translatable="yes">Build</property>
+                          </object>
+                        </property>
+                        <property name="tooltip-text" translatable="yes">Try building the app from what has been written</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <property name="content">
+                  <object class="GtkStack" id="panes">
+                    <!-- Otherwise the stack's minimum width is the widest pane's,
+                         for every pane: one wide page sets the floor the whole
+                         window cannot go below, and which page that is nobody
+                         can tell from looking. -->
+                    <property name="hhomogeneous">False</property>
+
+                    <!-- The manifest's own settings -->
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">manifest</property>
+                        <property name="child">
+                          <object class="AdwPreferencesPage">
+                            <child>
+                              <object class="AdwPreferencesGroup" id="about_group">
+                                <property name="title" translatable="yes">What the app is</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <property name="title" translatable="yes">What it runs on</property>
+                                <child>
+                                  <object class="AdwComboRow" id="runtime_combo">
+                                    <property name="title" translatable="yes">Runtime</property>
+                                    <property name="subtitle" translatable="yes">The libraries the app is built against and runs with.</property>
+                                    <property name="subtitle-lines">0</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="AdwActionRow" id="sdk_row">
+                                    <property name="title" translatable="yes">SDK</property>
+                                    <property name="subtitle-lines">0</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <property name="title" translatable="yes">Extra tools for building</property>
+                                <property name="description" translatable="yes">The build environment already has the C and C++ tools and the usual build systems. Switch on anything else your project is written in.</property>
+                                <child>
+                                  <object class="GtkListBox" id="extensions_list">
+                                    <property name="selection-mode">none</property>
+                                    <style>
+                                      <class name="boxed-list"/>
+                                    </style>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <child>
+                                  <object class="AdwExpanderRow">
+                                    <property name="title" translatable="yes">What is this page for?</property>
+                                    <child>
+                                      <object class="AdwActionRow">
+                                        <property name="title" translatable="yes">This page describes the app itself rather than how it is built. The app ID is the one thing that has to be unique across every Flatpak in the world, which is why it looks like a backwards website address; Flatpak uses it to name the app's settings, its window and the files written beside the manifest. The runtime is the set of libraries your app is built against and runs with — the part everyone shares — and the SDK is that same set with compilers added, used only while building and chosen to match.</property>
+                                        <property name="title-lines">0</property>
+                                        <property name="use-markup">False</property>
+                                        <style>
+                                          <class name="dim-label"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
+                    <!-- Sources -->
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">sources</property>
+                        <property name="child">
+                          <object class="AdwPreferencesPage">
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <!-- A group title sits on one line beside its
+                                     header suffix and doesn't wrap, so a long
+                                     one is a floor under the whole window's
+                                     width. This is also what the guided step is
+                                     called. -->
+                                <property name="title" translatable="yes">Where the code is</property>
+                                <property name="description" translatable="yes">Usually one folder. A patch, an extra file or a second repository can be added alongside it.</property>
+                                <property name="header-suffix">
+                                  <object class="GtkMenuButton">
+                                    <property name="valign">center</property>
+                                    <property name="label" translatable="yes">Add</property>
+                                    <property name="menu-model">add_source_menu</property>
+                                    <style>
+                                      <class name="flat"/>
+                                    </style>
+                                  </object>
+                                </property>
+                                <child>
+                                  <object class="GtkListBox" id="sources_list">
+                                    <property name="selection-mode">none</property>
+                                    <style>
+                                      <class name="boxed-list"/>
+                                    </style>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <child>
+                                  <object class="AdwExpanderRow">
+                                    <property name="title" translatable="yes">What is this page for?</property>
+                                    <child>
+                                      <object class="AdwActionRow">
+                                        <property name="title" translatable="yes">The build starts with an empty folder and copies your code into it. A folder is copied as it is on disk; a Git repository is checked out at the tag or commit you name; an archive is downloaded and checked against a checksum, so the build fails loudly if the file ever changes. Naming an exact tag or commit is what makes a build repeatable a year later.</property>
+                                        <property name="title-lines">0</property>
+                                        <property name="use-markup">False</property>
+                                        <style>
+                                          <class name="dim-label"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
+                    <!-- How it is built -->
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">build</property>
+                        <property name="child">
+                          <object class="AdwPreferencesPage">
+                            <child>
+                              <object class="AdwPreferencesGroup" id="build_group">
+                                <property name="title" translatable="yes">How it's built</property>
+                                <child>
+                                  <object class="AdwComboRow" id="buildsystem_combo">
+                                    <property name="title" translatable="yes">Build system</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="AdwActionRow" id="buildsystem_status">
+                                    <property name="title-lines">0</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup" id="commands_group">
+                                <property name="title" translatable="yes">Build commands</property>
+                                <property name="description" translatable="yes">One command per line, run in order. The last one has to install the program into /app.</property>
+                                <child>
+                                  <object class="GtkScrolledWindow">
+                                    <property name="height-request">130</property>
+                                    <style>
+                                      <class name="card"/>
+                                    </style>
+                                    <property name="child">
+                                      <object class="GtkTextView" id="commands_view">
+                                        <property name="monospace">True</property>
+                                        <property name="top-margin">10</property>
+                                        <property name="bottom-margin">10</property>
+                                        <property name="left-margin">10</property>
+                                        <property name="right-margin">10</property>
+                                      </object>
+                                    </property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup" id="options_group">
+                                <property name="title" translatable="yes">Options for the build system</property>
+                                <property name="description" translatable="yes">One per line, passed to the configure step.</property>
+                                <child>
+                                  <object class="GtkScrolledWindow">
+                                    <property name="height-request">100</property>
+                                    <style>
+                                      <class name="card"/>
+                                    </style>
+                                    <property name="child">
+                                      <object class="GtkTextView" id="options_view">
+                                        <property name="monospace">True</property>
+                                        <property name="top-margin">10</property>
+                                        <property name="bottom-margin">10</property>
+                                        <property name="left-margin">10</property>
+                                        <property name="right-margin">10</property>
+                                      </object>
+                                    </property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <property name="title" translatable="yes">Settings the build needs</property>
+                                <property name="description" translatable="yes">One NAME=value per line.</property>
+                                <child>
+                                  <object class="GtkScrolledWindow">
+                                    <property name="height-request">90</property>
+                                    <style>
+                                      <class name="card"/>
+                                    </style>
+                                    <property name="child">
+                                      <object class="GtkTextView" id="env_view">
+                                        <property name="monospace">True</property>
+                                        <property name="top-margin">10</property>
+                                        <property name="bottom-margin">10</property>
+                                        <property name="left-margin">10</property>
+                                        <property name="right-margin">10</property>
+                                      </object>
+                                    </property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <child>
+                                  <object class="AdwExpanderRow">
+                                    <property name="title" translatable="yes">What is this page for?</property>
+                                    <child>
+                                      <object class="AdwActionRow">
+                                        <property name="title" translatable="yes">These are the instructions for turning your code into the finished app. Choosing the build system your project already uses fills in the usual commands for it, and you can change them afterwards. They run inside the build, where the app is being assembled: whatever they copy into place is what ends up inside the Flatpak and nothing else, which is why the lines that install the menu entry, the icon and the store description matter as much as the one that installs the program.</property>
+                                        <property name="title-lines">0</property>
+                                        <property name="use-markup">False</property>
+                                        <style>
+                                          <class name="dim-label"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
+                    <!-- What it downloads while building, built by `panes` -->
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">dependencies</property>
+                        <property name="child">
+                          <object class="GtkScrolledWindow">
+                            <property name="hscrollbar-policy">never</property>
+                            <property name="child">
+                              <object class="AdwClamp">
+                                <property name="maximum-size">640</property>
+                                <property name="child">
+                                  <object class="GtkBox" id="dependencies_box">
+                                    <property name="orientation">vertical</property>
+                                    <property name="spacing">24</property>
+                                    <property name="margin-top">24</property>
+                                    <property name="margin-bottom">24</property>
+                                    <property name="margin-start">12</property>
+                                    <property name="margin-end">12</property>
+                                  </object>
+                                </property>
+                              </object>
+                            </property>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
+                    <!-- What the app may do, built by `panes` -->
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">permissions</property>
+                        <property name="child">
+                          <object class="GtkScrolledWindow">
+                            <property name="hscrollbar-policy">never</property>
+                            <property name="child">
+                              <object class="AdwClamp">
+                                <property name="maximum-size">640</property>
+                                <property name="child">
+                                  <object class="GtkBox" id="permissions_box">
+                                    <property name="orientation">vertical</property>
+                                    <property name="spacing">24</property>
+                                    <property name="margin-top">24</property>
+                                    <property name="margin-bottom">24</property>
+                                    <property name="margin-start">12</property>
+                                    <property name="margin-end">12</property>
+                                  </object>
+                                </property>
+                              </object>
+                            </property>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
+                    <!-- How it looks in a menu and a store, built by `panes` -->
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">appearance</property>
+                        <property name="child">
+                          <object class="GtkScrolledWindow">
+                            <property name="hscrollbar-policy">never</property>
+                            <property name="child">
+                              <object class="AdwClamp">
+                                <property name="maximum-size">640</property>
+                                <property name="child">
+                                  <object class="GtkBox" id="appearance_box">
+                                    <property name="orientation">vertical</property>
+                                    <property name="spacing">24</property>
+                                    <property name="margin-top">24</property>
+                                    <property name="margin-bottom">24</property>
+                                    <property name="margin-start">12</property>
+                                    <property name="margin-end">12</property>
+                                  </object>
+                                </property>
+                              </object>
+                            </property>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
+                    <!-- The file itself -->
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">yaml</property>
+                        <property name="child">
+                          <object class="GtkBox">
+                            <property name="orientation">vertical</property>
+                            <child>
+                              <object class="AdwBanner" id="yaml_banner">
+                                <property name="revealed">False</property>
+                                <property name="button-label" translatable="yes">Go to it</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <property name="margin-top">12</property>
+                                <property name="margin-bottom">6</property>
+                                <property name="margin-start">12</property>
+                                <property name="margin-end">12</property>
+                                <child>
+                                  <object class="AdwExpanderRow">
+                                    <property name="title" translatable="yes">What is this page for?</property>
+                                    <child>
+                                      <object class="AdwActionRow">
+                                        <property name="title" translatable="yes">This is the file itself — the recipe every other page in this app has been filling in for you, and what flatpak-builder actually reads. You can type in it directly, and the other pages follow along; change something on one of them and the text here is rewritten to match. Nothing you type is applied until it makes sense as a whole file, so a half-finished line is never acted on, and the message above says what is wrong while it is.</property>
+                                        <property name="title-lines">0</property>
+                                        <property name="use-markup">False</property>
+                                        <style>
+                                          <class name="dim-label"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkScrolledWindow">
+                                <property name="vexpand">True</property>
+                                <property name="child">
+                                  <object class="GtkSourceView" id="yaml_view">
+                                    <property name="monospace">True</property>
+                                    <property name="show-line-numbers">True</property>
+                                    <property name="highlight-current-line">True</property>
+                                    <property name="auto-indent">True</property>
+                                    <property name="indent-width">2</property>
+                                    <property name="insert-spaces-instead-of-tabs">True</property>
+                                    <property name="smart-backspace">True</property>
+                                    <property name="top-margin">12</property>
+                                    <property name="bottom-margin">12</property>
+                                    <property name="left-margin">6</property>
+                                    <property name="right-margin">12</property>
+                                  </object>
+                                </property>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
+                    <!-- Everything still wrong -->
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">problems</property>
+                        <property name="child">
+                          <object class="AdwPreferencesPage">
+                            <child>
+                              <object class="AdwPreferencesGroup" id="problems_group">
+                                <property name="title" translatable="yes">Worth fixing</property>
+                                <child>
+                                  <object class="GtkListBox" id="problems_list">
+                                    <property name="selection-mode">none</property>
+                                    <style>
+                                      <class name="boxed-list"/>
+                                    </style>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <child>
+                                  <object class="AdwExpanderRow">
+                                    <property name="title" translatable="yes">What is this page for?</property>
+                                    <child>
+                                      <object class="AdwActionRow">
+                                        <property name="title" translatable="yes">Everything this app can see wrong with the project, in one list. Each row says what is wrong and what to put instead, and takes you to the page it belongs on. The ones marked as problems have to be dealt with before the files can be written — usually something missing that a manifest cannot do without. The rest are advice: worth reading, often about how the app looks in a store, but nothing stops you either way.</property>
+                                        <property name="title-lines">0</property>
+                                        <property name="use-markup">False</property>
+                                        <style>
+                                          <class name="dim-label"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
+                    <!-- A module this app keeps but doesn't model -->
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="name">other-module</property>
+                        <property name="child">
+                          <object class="AdwStatusPage" id="other_module_page">
+                            <property name="icon-name">document-properties-symbolic</property>
+                            <property name="title" translatable="yes">Kept exactly as written</property>
+                            <property name="description" translatable="yes">This part of the manifest came from the file you opened. It is written back untouched, but the forms here only edit the app's own part. Change it in the manifest text if you need to.</property>
+                            <property name="child">
+                              <object class="GtkButton" id="other_module_button">
+                                <property name="halign">center</property>
+                                <property name="label" translatable="yes">Open the manifest text</property>
+                                <style>
+                                  <class name="pill"/>
+                                </style>
+                              </object>
+                            </property>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                  </object>
+                </property>
+              </object>
+            </property>
+          </object>
+        </property>
+      </object>
+        </property>
+      </object>
+    </property>
+  </template>
+</interface>

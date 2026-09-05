@@ -1,0 +1,22 @@
+# Build output.
+/target/
+
+# Flatpak scratch: flatpak-builder's own state, the build tree it assembles,
+# and the bundle makeflatpak.sh exports. All regenerated from the manifest.
+/build/
+/dist/
+/repo/
+/build-repo/
+/build-dir/
+/.flatpak-builder/
+
+# Screenshots, probe projects and anything else made while working on this.
+# Never part of the app: the Flatpak manifest skips it too.
+/dev/
+
+# Editor and desktop leftovers.
+*.swp
+*~
+.DS_Store
+.idea/
+.vscode/

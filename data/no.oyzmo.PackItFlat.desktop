@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Pack It Flat
+GenericName=Flatpak Builder
+Comment=Turn a program on your computer into a Flatpak
+Exec=packitflat %f
+Icon=no.oyzmo.PackItFlat
+Terminal=false
+Type=Application
+Categories=Development;Building;GTK;
+Keywords=flatpak;manifest;package;build;appstream;
+StartupNotify=true
+StartupWMClass=no.oyzmo.PackItFlat
+MimeType=application/x-yaml;text/x-yaml;application/json;

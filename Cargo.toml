@@ -1,0 +1,31 @@
+[package]
+name = "packitflat"
+version = "0.20.1"
+edition = "2021"
+rust-version = "1.80"
+description = "Make a Flatpak without knowing what a manifest is"
+license = "GPL-3.0-or-later"
+# flatpak-builder's scratch trees are root-owned in places and contain symlink
+# loops through a sandbox's /proc; build.rs makes cargo fingerprint the whole
+# package directory, and the walk aborts on those with a bare "Permission
+# denied". Keep the generated directories out of it.
+exclude = ["build/", "dist/", "dev/", "repo/", ".flatpak-builder/"]
+
+[dependencies]
+# Aliased to the names the GTK documentation uses, as in the sibling apps.
+gtk = { package = "gtk4", version = "0.11", features = ["v4_12"] }
+adw = { package = "libadwaita", version = "0.9", features = ["v1_5"] }
+# The manifest text pane. The library is part of the GNOME runtime, so this adds
+# nothing to what the Flatpak has to ship.
+sourceview = { package = "sourceview5", version = "0.11" }
+serde = { version = "1", features = ["derive"] }
+serde_yaml_ng = "0.10"
+anyhow = "1"
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+strip = true
+lto = "thin"

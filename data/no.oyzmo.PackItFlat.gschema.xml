@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="no.oyzmo.PackItFlat" path="/no/oyzmo/PackItFlat/">
+    <key name="default-mode" type="s">
+      <choices>
+        <choice value="ask"/>
+        <choice value="guided"/>
+        <choice value="editor"/>
+      </choices>
+      <default>'ask'</default>
+      <summary>How to work on a new project</summary>
+      <description>
+        Whether a new project opens in the guided steps, in the editor, or
+        whether the app asks each time.
+      </description>
+    </key>
+  </schema>
+</schemalist>

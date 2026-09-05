@@ -1,0 +1,76 @@
+# Flatpak manifest for Pack It Flat.
+#
+# Built on a different machine from the one the source is written on, so this
+# file and generated-sources.json have to be complete and self-contained:
+#   ./makeflatpak.sh          regenerates the crate list, builds, exports a bundle
+#
+# Runtime/SDK: GNOME 50 is built on freedesktop 25.08, which is the base the
+# rust-stable extension has to match. Check what exists with:
+#   flatpak remote-ls flathub --runtime | grep -E 'Platform|rust-stable'
+
+app-id: no.oyzmo.PackItFlat
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: packitflat
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+
+  # The app reads the user's project folders and writes the manifest, desktop
+  # file, metainfo and icons next to them. That is the whole job, and the file
+  # chooser portal cannot express "this folder and everything the build will
+  # create in it", so --filesystem=home is asked for and justified in the
+  # metainfo. Never --filesystem=host: nothing outside the user's own files is
+  # any of this app's business.
+  - --filesystem=home
+
+  # Running flatpak-builder happens on the host, through flatpak-spawn. Without
+  # this the app still writes every file — only the optional "build it now"
+  # button is disabled, with an explanation and a command to copy.
+  - --talk-name=org.freedesktop.Flatpak
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/packitflat/cargo
+
+modules:
+  - name: packitflat
+    buildsystem: simple
+    build-commands:
+      # Crates come from generated-sources.json, so the build stays offline.
+      - cargo --offline fetch --manifest-path Cargo.toml --verbose
+      - cargo --offline build --release --verbose
+      - install -Dm755 target/release/packitflat /app/bin/packitflat
+      - install -Dm644 data/no.oyzmo.PackItFlat.desktop
+          /app/share/applications/no.oyzmo.PackItFlat.desktop
+      - install -Dm644 data/no.oyzmo.PackItFlat.metainfo.xml
+          /app/share/metainfo/no.oyzmo.PackItFlat.metainfo.xml
+      - install -Dm644 data/no.oyzmo.PackItFlat.svg
+          /app/share/icons/hicolor/scalable/apps/no.oyzmo.PackItFlat.svg
+      # flatpak-builder compiles the schemas itself once they are installed here.
+      # Without this the app still runs: it keeps preferences in its own file.
+      - install -Dm644 data/no.oyzmo.PackItFlat.gschema.xml
+          /app/share/glib-2.0/schemas/no.oyzmo.PackItFlat.gschema.xml
+      # The GPL wants its text to travel with the binary.
+      - install -Dm644 COPYING /app/share/licenses/no.oyzmo.PackItFlat/COPYING
+    sources:
+      # Paths here are relative to THIS FILE, not to the project root, so both
+      # entries climb out of flatpak/. `path: .` would hand the builder the
+      # flatpak directory and the build would fail on a missing Cargo.toml.
+      - type: dir
+        path: ..
+        skip:
+          - dev
+          - docs
+          - target
+          - build
+          - dist
+          - .flatpak-builder
+      - ../generated-sources.json

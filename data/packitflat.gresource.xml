@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/no/oyzmo/PackItFlat">
+    <file preprocess="xml-stripblanks">ui/window.ui</file>
+    <file preprocess="xml-stripblanks">ui/wizard.ui</file>
+    <file preprocess="xml-stripblanks">ui/editor.ui</file>
+    <file preprocess="xml-stripblanks">ui/build.ui</file>
+    <file preprocess="xml-stripblanks">ui/clone.ui</file>
+  </gresource>
+  <!-- Laid out the way GtkIconTheme expects a resource icon directory, so the
+       icon resolves by name from the source tree and from the Flatpak alike,
+       with no install step. -->
+  <gresource prefix="/no/oyzmo/PackItFlat/icons/scalable/apps">
+    <file preprocess="xml-stripblanks">no.oyzmo.PackItFlat.svg</file>
+  </gresource>
+</gresources>
