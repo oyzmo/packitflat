@@ -89,15 +89,16 @@ modules:
       # The GPL wants its text to travel with the binary.
       - install -Dm644 COPYING /app/share/licenses/no.oyzmo.PackItFlat/COPYING
     sources:
-      # FILL IN: the repository this code is published at, and the exact commit
-      # the tag points at. Flathub builds only from a public address — a `dir`
-      # source, which the manifest beside this one uses, is not accepted. The
-      # tag is a label and can be moved; `commit` is what makes the build
-      # repeatable, so both are given and the commit is what actually decides.
+      # Flathub builds only from a public address — a `dir` source, which the
+      # manifest beside this one uses, is not accepted. The tag is a label and
+      # can be moved; `commit` is what makes the build repeatable, so both are
+      # given and the commit is what actually decides. On every release: move
+      # the tag (bump.sh does), then put the commit it points at here —
+      #   git rev-parse v<version>^{}
       - type: git
         url: https://github.com/oyzmo/packitflat.git
         tag: v0.20.1
-        commit: 0000000000000000000000000000000000000000
+        commit: 0391c259227ec8e653d1570bd2a13175058bee14
         x-checker-data:
           type: git
           tag-pattern: ^v([\d.]+)$

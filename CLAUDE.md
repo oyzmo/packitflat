@@ -79,6 +79,30 @@ Deliberately deferred, each with a working stand-in rather than a dead end:
   through `i18n::t()`; `.ui` strings carry `translatable="yes"`. When a catalogue is added, `t()`
   becomes the gettext call and nothing else changes.
 
+## Publishing
+
+**This project is public, and it is the exception to the user's "no git" rule** — asked for and
+answered on 2026-09-05. It lives at **https://github.com/oyzmo/packitflat**, GPL-3.0-or-later, first
+commit `0391c259` at version 0.20.1.
+
+Git runs on the user's **host machine**, in `~/Code/rust/packitflat` — the same files as this share,
+which cannot hold a repository (`git init` fails on virtiofs). **Claude does not run git here; the
+user runs it there.** Commits are authored as `oyzmo <74640760+oyzmo@users.noreply.github.com>`:
+neither the user's real name nor their private address goes into a public commit, and that is
+settled, not a preference to re-ask about.
+
+`.gitignore` is what keeps the repository at 1.6 MB instead of 500 MB. Its patterns are anchored
+(`/build/`, leading and trailing slash) because a bare `build` would swallow `build.rs` and
+`src/build.rs`, which are real source. `dev/` is out; **`docs/screenshots/` is in** — the metainfo's
+`<screenshots>` point at its raw GitHub URLs, so an over-broad ignore rule there breaks a Flathub
+submission with no local symptom.
+
+Where the Flathub submission stands, and what is left of it, is in the header of
+`flatpak/flathub/no.oyzmo.PackItFlat.yml` — six numbered steps with the exact commands. The state as
+of the last session: pushed to GitHub; **not yet tagged `v0.20.1`**, and the manifest's filled-in
+`commit:` is not yet committed. Do those in that order, so the tag stays on the commit the manifest
+names.
+
 ## Commands
 
 The project sits on a **virtiofs share**, which is unreliable for parallel compiler writes, so the
