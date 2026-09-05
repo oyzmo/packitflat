@@ -98,7 +98,7 @@ modules:
       - type: git
         url: https://github.com/oyzmo/packitflat.git
         tag: v0.21.0
-        commit: 0000000000000000000000000000000000000000
+        commit: b4de5934715f047e4c81c15632a001264dc45435
         x-checker-data:
           type: git
           tag-pattern: ^v([\d.]+)$
