@@ -94,14 +94,29 @@ pub fn target_path(app_id: &str, kind: &Kind) -> PathBuf {
         .join(format!("{app_id}.{extension}"))
 }
 
+/// Take up the icon a project already has, if it hasn't got one chosen.
+///
+/// Called wherever the answer could have changed, not only when the project is
+/// opened: a project started from a folder has no app ID yet, and the icon is
+/// named after it — so at open there is nothing to look for, and by the time the
+/// ID is typed nobody would look again. Cheap enough to call on every edit.
+pub fn adopt_existing(project: &mut crate::project::Project) {
+    if project.icon_source.is_some() {
+        return;
+    }
+    let Some(folder) = project.source_dir.clone() else {
+        return;
+    };
+    project.icon_source = existing(&folder, &project.manifest.app_id);
+}
+
 /// The icon a project already has, if there is one where this app puts them.
 ///
 /// A manifest opened on its own carries no memory of which picture was chosen —
 /// the manifest has nowhere to record it — so a project that has been through
 /// here before came back without an icon, and with it went the line that
-/// installs the icon into the finished app. The file sitting at the
-/// conventional path *is* the answer, so it is adopted rather than asked for
-/// again.
+/// installs it into the finished app. The file sitting at the conventional path
+/// *is* the answer, so it is adopted rather than asked for again.
 pub fn existing(project_dir: &Path, app_id: &str) -> Option<PathBuf> {
     let app_id = app_id.trim();
     if app_id.is_empty() {
@@ -305,6 +320,38 @@ mod tests {
         });
         assert_eq!(fine.len(), 1, "a standard PNG gets the SVG suggestion only");
         assert!(fine[0].contains("SVG"));
+    }
+
+    /// A project started from a folder has no app ID yet, and the icon is named
+    /// after it — so at open there is nothing to look for. If nobody looks again
+    /// once the ID is typed, an icon that is already in place never reaches the
+    /// plan, and the build installs no icon at all.
+    #[test]
+    fn an_icon_already_in_place_is_taken_up_once_the_app_id_is_known() {
+        let dir = tempfile::tempdir().unwrap();
+        let apps = dir.path().join("icons/hicolor/scalable/apps");
+        fs::create_dir_all(&apps).unwrap();
+        fs::write(apps.join("no.oyzmo.Sample.svg"), b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>").unwrap();
+
+        let mut project = crate::project::Project::from_folder(dir.path()).0;
+        assert!(project.manifest.app_id.is_empty());
+
+        // Nothing to find while the ID is empty.
+        adopt_existing(&mut project);
+        assert!(project.icon_source.is_none());
+
+        // And it is found the moment there is one.
+        project.manifest.app_id = "no.oyzmo.Sample".into();
+        adopt_existing(&mut project);
+        assert_eq!(
+            project.icon_source.as_deref(),
+            Some(apps.join("no.oyzmo.Sample.svg").as_path())
+        );
+
+        // A picture the user chose themselves is never overruled.
+        project.icon_source = Some(dir.path().join("mine.svg"));
+        adopt_existing(&mut project);
+        assert_eq!(project.icon_source.as_deref(), Some(dir.path().join("mine.svg").as_path()));
     }
 
     #[test]

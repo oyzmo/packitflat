@@ -74,6 +74,11 @@
   </branding>
 
   <releases>
+    <release version="0.21.1" date="2026-09-05">
+      <description>
+        <p>The icon is installed even when it was chosen after the build step, and an icon already in place is taken up once the app ID is known.</p>
+      </description>
+    </release>
     <release version="0.21.0" date="2026-09-05">
       <description>
         <p>A manifest written for a project fetched from Git now names its build system and carries the files it installs, so the build works instead of guessing autotools.</p>

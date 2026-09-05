@@ -576,6 +576,11 @@ impl PifWizard {
             module.config_opts = options;
             forms::set_module_env(module, env);
 
+            // An icon already sitting where this app puts them belongs to this
+            // project. Looked for on every edit, not only when the project was
+            // opened: the icon is named after the app ID, so a project started
+            // from a folder has nothing to find until the ID is typed.
+            packitflat::icons::adopt_existing(project);
             // A hand-written build installs only what its commands say, so the
             // desktop entry, the icon and the metainfo have to be in there or
             // the finished app is a binary and nothing else.

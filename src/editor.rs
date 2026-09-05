@@ -725,8 +725,9 @@ impl PifEditor {
             module.config_opts = options;
             forms::set_module_env(module, env);
 
-            // As in the wizard: a `simple` build installs exactly what its
-            // commands say, and the app's own files are not automatic.
+            // As in the wizard: an icon already in place is this project's, and
+            // a `simple` build installs exactly what its commands say.
+            packitflat::icons::adopt_existing(project);
             packitflat::generate::sync_install_commands(project);
         });
     }

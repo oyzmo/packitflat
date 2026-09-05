@@ -302,6 +302,22 @@ module has no `dir` source, with `dest:` for the icon so it lands in
 flatpak-builder 1.4.10 before being written: a `file` source does travel with a git source, and
 without `dest` the icon lands at the top and the install line misses it.
 
+**The sync has to happen when the files are written, not when a build widget changes.** Twice now
+the same shape of bug: `sync_install_commands` ran only from `collect`, which fires on a *build*
+widget, so anything that changed the plan by another route left the manifest behind. The one that
+reached a user: choosing an icon on the appearance step put the icon in the project folder and left
+the manifest without the line installing it, so the build printed `WARNING: Icon referenced in
+desktop file but not exported` and the app arrived with a blank icon in every Flatpak manager.
+`forms::write_files` now syncs against **the plan it is about to write**, which is the only moment
+that is reliably right — and being plan-shaped, it takes a switched-off file's line out at the same
+time. Keep the `collect` calls too; they are what makes the review step's preview honest before the
+button is pressed.
+
+**An icon is looked for on every edit, not only when the project is opened.** The icon file is named
+after the app ID, so a project started from a *folder* has nothing to find at open — the ID is still
+empty — and by the time it is typed nobody would look again. `icons::adopt_existing` is called from
+`open_project` and from both modes' `collect`; it never overrules a picture the user chose.
+
 **An icon the app itself put in the project was forgotten the moment the project was reopened.** The
 manifest has nowhere to record which picture was chosen, so `icon_source` came back `None`, the icon
 dropped out of the plan, and with it went the line that installs it. `icons::existing` reads the

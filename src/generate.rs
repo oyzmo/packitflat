@@ -608,6 +608,49 @@ mod tests {
         assert!(!commands.iter().any(|c| c.contains("/app/share/metainfo/")), "{commands:#?}");
     }
 
+    /// The failure this prevents, seen on a real project: the icon is chosen
+    /// after the build step was last touched, so the sync that adds install
+    /// lines never runs again. The icon is written into the folder, the manifest
+    /// keeps its old commands, and the finished app has a menu entry with a
+    /// blank icon — `WARNING: Icon referenced in desktop file but not exported`.
+    /// Writing syncs against the plan being written, which is the only moment
+    /// that is reliably right.
+    #[test]
+    fn an_icon_chosen_after_the_build_step_still_gets_its_line() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut project = project_in(dir.path());
+        let module = project.manifest.main_module_mut().unwrap();
+        module.buildsystem = Some(crate::manifest::BuildSystem::Simple);
+        module.build_commands = vec!["install -Dm755 sample /app/bin/sample".into()];
+
+        // The state the app was in: everything synced, no icon yet.
+        sync_install_commands(&mut project);
+        assert!(!project
+            .manifest
+            .main_module()
+            .unwrap()
+            .build_commands
+            .iter()
+            .any(|c| c.contains("/app/share/icons/")));
+
+        // Then an icon is chosen, and nothing about the build changes.
+        let icon = dir.path().join("chosen.svg");
+        std::fs::write(&icon, svg_bytes()).unwrap();
+        project.icon_source = Some(icon);
+
+        // What `forms::write_files` does before writing.
+        let plan = plan(&project).unwrap();
+        sync_install_commands_with(&mut project, &plan);
+
+        let commands = &project.manifest.main_module().unwrap().build_commands;
+        assert!(
+            commands.iter().any(|c| c.ends_with(
+                "/app/share/icons/hicolor/scalable/apps/no.oyzmo.Sample.svg"
+            )),
+            "{commands:#?}"
+        );
+    }
+
     /// The failure this prevents: a project started from a Git address builds
     /// its code from the repository, so the desktop entry, metainfo and icon
     /// this app writes into the folder are not in the build at all. It compiles

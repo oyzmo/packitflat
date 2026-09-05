@@ -567,6 +567,15 @@ pub fn write_files(
 ) {
     let parent: gtk::Widget = parent.as_ref().clone();
 
+    // The last possible moment, and the only one that is reliably right: the
+    // manifest about to be written must install exactly the files about to be
+    // written. Doing this only in `collect` meant it ran when a *build* widget
+    // changed — so choosing an icon put the icon in the folder and left the
+    // manifest without the line that installs it, and the finished app had a
+    // generic icon in every Flatpak manager. It is done against this plan, so
+    // a file switched off on the review step loses its line at the same time.
+    handle.write(|project| generate::sync_install_commands_with(project, plan));
+
     match handle.read(|project| generate::write(project, plan, backup)) {
         Ok(written) => {
             if let Err(err) = handle.read(project_save) {

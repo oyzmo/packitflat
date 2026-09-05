@@ -541,12 +541,7 @@ impl PifWindow {
         // project, whatever the saved copy remembers — a manifest opened on its
         // own remembers nothing, and the icon would go missing from the plan
         // and from the build.
-        if project.icon_source.is_none() {
-            if let Some(folder) = project.source_dir.clone() {
-                project.icon_source =
-                    packitflat::icons::existing(&folder, &project.manifest.app_id);
-            }
-        }
+        packitflat::icons::adopt_existing(&mut project);
 
         // Before anything is shown or saved. A hand-written build installs only
         // what its commands say, and this used to be put right in the two modes'
