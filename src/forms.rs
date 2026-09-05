@@ -961,7 +961,24 @@ pub fn hook_expanders(root: &impl IsA<gtk::Widget>) {
 /// A row whose whole point is the text box in it shouldn't take a Tab stop of
 /// its own — pressing Tab twice to reach every field is a small thing that
 /// happens on every field.
+///
+/// **Only a plain action row.** Every interactive row in libadwaita is an
+/// `AdwActionRow` underneath — a combo row, a spin row — and a combo row's popup
+/// carries a search box in libadwaita's own template, so "contains an entry"
+/// becomes true of one as soon as its list exists. Marking it non-activatable
+/// stops a *click* from opening the list at all: the row looks like a drop-down
+/// and nothing happens when you press it.
+///
+/// Measured, not reasoned: with this guard removed, the build-system row on step
+/// 4 reports `activatable=false` while the runtime row on step 2 reports true —
+/// and the only difference is *when the model arrives*. The runtime list is
+/// filled in the background after `flatpak remote-ls`, so at the moment this
+/// walk ran there was no popup to find a search box in. It was one cache away
+/// from being just as dead. `PACKITFLAT_DEV_COMBO=1` measures both.
 fn skip_row_when_tabbing(row: &adw::ActionRow) {
+    if row.type_() != adw::ActionRow::static_type() {
+        return;
+    }
     if contains_entry(row.upcast_ref()) {
         row.set_focusable(false);
         row.set_activatable(false);
@@ -1142,7 +1159,11 @@ pub fn build_system_index(current: Option<&BuildSystem>) -> u32 {
         .iter()
         .position(|(system, _, _)| match (system, current) {
             (Some(a), Some(b)) => a == b,
-            // No build system named means "simple"; flatpak-builder's own default.
+            // Nothing named: shown as "commands I write myself", because that is
+            // what a manifest with build-commands and no buildsystem means to
+            // *read*. It is not what flatpak-builder does with it — its default
+            // is autotools — which is why `validate` calls that an error and
+            // every manifest this app writes names one.
             (Some(BuildSystem::Simple), None) => true,
             _ => false,
         })

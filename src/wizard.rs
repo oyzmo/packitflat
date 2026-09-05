@@ -890,6 +890,96 @@ impl PifWizard {
     /// correctly and then stores a *different* licence is worse than one that
     /// visibly does nothing.
     #[cfg(debug_assertions)]
+    /// Report what the build-system row actually is, and whether activating it
+    /// opens its list. A row that looks like a drop-down and does nothing when
+    /// clicked is the sort of thing only the running widget can answer.
+    #[cfg(debug_assertions)]
+    pub fn dev_combo_check(&self) {
+        self.go_to_step(3);
+
+        let wizard = self.clone();
+        glib::timeout_add_local_once(std::time::Duration::from_millis(600), move || {
+            // Both of them: they are set up the same way, and whatever breaks
+            // one breaks the other silently on a step nobody photographs.
+            let runtime = wizard.imp().runtime_combo.clone();
+            eprintln!(
+                "combo-check:      runtime row: {} choices, sensitive={} activatable={}",
+                runtime.model().map(|m| m.n_items()).unwrap_or(0),
+                runtime.is_sensitive(),
+                runtime.is_activatable(),
+            );
+            let runtime_ok = runtime.is_activatable() && runtime.is_sensitive();
+            eprintln!(
+                "combo-check: {} the runtime row on step 2 can be clicked",
+                if runtime_ok { "ok  " } else { "FAIL" }
+            );
+
+            let combo = wizard.imp().buildsystem_combo.clone();
+            let report = |what: &str, passed: bool| {
+                eprintln!("combo-check: {} {what}", if passed { "ok  " } else { "FAIL" });
+                passed
+            };
+
+            let items = combo.model().map(|model| model.n_items()).unwrap_or(0);
+            eprintln!(
+                "combo-check:      {items} choices, showing {}, sensitive={} activatable={} \
+                 can-focus={} visible={}",
+                combo.selected(),
+                combo.is_sensitive(),
+                combo.is_activatable(),
+                combo.can_focus(),
+                combo.is_visible(),
+            );
+            let mut ok = runtime_ok & report("it has a list to show", items > 1);
+            ok &= report("the row is sensitive", combo.is_sensitive());
+            ok &= report("the row is activatable", combo.is_activatable());
+
+            // The rule this fix narrowed is still doing its job: a plain row
+            // built around a text box takes no Tab stop of its own.
+            let entry_row = wizard
+                .imp()
+                .app_id_entry
+                .ancestor(adw::ActionRow::static_type())
+                .and_downcast::<adw::ActionRow>();
+            eprintln!(
+                "combo-check:      the row holding the app ID box: focusable={:?}",
+                entry_row.as_ref().map(|row| row.is_focusable()),
+            );
+            ok &= report(
+                "a plain row with a text box still skips the Tab stop",
+                entry_row.is_some_and(|row| !row.is_focusable()),
+            );
+
+            // The way a click reaches it: activation is what opens the list.
+            adw::prelude::ActionRowExt::activate(&combo);
+
+            glib::timeout_add_local_once(std::time::Duration::from_millis(400), move || {
+                let popover = forms::descendant::<gtk::Popover>(&combo.clone().upcast());
+                eprintln!(
+                    "combo-check:      popover found={} visible={}",
+                    popover.is_some(),
+                    popover.as_ref().is_some_and(|p| p.is_visible()),
+                );
+                let ok = ok
+                    & report(
+                        "activating it opens the list",
+                        popover.is_some_and(|p| p.is_visible()),
+                    );
+                eprintln!(
+                    "combo-check: {}",
+                    if ok { "all checks passed" } else { "FAILURES ABOVE" }
+                );
+                if let Some(window) = wizard.root().and_downcast::<gtk::Window>() {
+                    window.close();
+                }
+                if !ok {
+                    std::process::exit(1);
+                }
+            });
+        });
+    }
+
+    #[cfg(debug_assertions)]
     pub fn dev_licence_check(&self, query: &str) {
         self.go_to_step(0);
         adw::prelude::ActionRowExt::activate(&*self.imp().license_row);

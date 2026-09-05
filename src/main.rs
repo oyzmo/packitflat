@@ -133,6 +133,12 @@ fn dev_hooks(window: &PifWindow) {
         window.dev_write_files();
     }
 
+    // PACKITFLAT_DEV_COMBO=1 reports what the build-system row is and whether
+    // activating it opens its list.
+    if std::env::var_os("PACKITFLAT_DEV_COMBO").is_some() {
+        window.dev_combo_check();
+    }
+
     // PACKITFLAT_DEV_LICENCE=<query> opens the licence picker, types that, and
     // reports what the list is left showing.
     if let Ok(query) = std::env::var("PACKITFLAT_DEV_LICENCE") {

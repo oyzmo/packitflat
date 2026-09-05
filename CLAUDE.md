@@ -139,6 +139,8 @@ tree with each widget's size, position and **minimum** width, which is how layou
 settled; a bigger number (`=15`) goes that many levels deep, and the widgets that overlap are never
 near the top. `PACKITFLAT_DEV_NARROW=360` asks the page on top how narrow it could be and fails if
 that is wider than a phone.
+`PACKITFLAT_DEV_COMBO=1` reports what the two drop-down rows in the guided steps actually are — how
+many choices, sensitive, activatable — and whether activating one opens its list.
 `PACKITFLAT_DEV_LICENCE=gplv3` opens the licence picker from its row, types that, chooses the first
 match and prints what the project was left holding — end to end, because both halves of that path
 have been broken before. `PACKITFLAT_DEV_AUTOSAVE=1` types into a step, presses nothing, and checks
@@ -302,6 +304,22 @@ module has no `dir` source, with `dest:` for the icon so it lands in
 flatpak-builder 1.4.10 before being written: a `file` source does travel with a git source, and
 without `dest` the icon lands at the top and the install line misses it.
 
+**A drop-down that did nothing when clicked, because a Tab fix reached too far.** `hook_expanders`
+walks a page and hands every `AdwActionRow` to `skip_row_when_tabbing`, which makes a row holding a
+text box non-focusable and non-activatable so Tab goes straight to the box. But **every interactive
+row in libadwaita is an `AdwActionRow` underneath**, and an `AdwComboRow`'s popup carries a search
+box in libadwaita's own template — so "contains an entry" becomes true of a combo row as soon as its
+list exists, and it was quietly marked non-activatable. Keyboard activation still worked; a *click*
+did nothing at all. The rule now applies only to a row whose type is exactly `AdwActionRow`.
+
+The measurement is the interesting half. With the guard removed, step 4's build-system row reports
+`activatable=false` while step 2's runtime row reports `true` — and the only difference is *when the
+model arrives*: the runtime list is filled in the background after `flatpak remote-ls`, so at the
+moment the walk ran there was no popup to find a search box in. It was one cache away from being
+just as dead. `PACKITFLAT_DEV_COMBO=1` measures both rows, checks that activating one opens its
+list, and checks that the Tab rule still holds on the row around the app-ID box — narrowing a fix
+must not undo the fix.
+
 **The sync has to happen when the files are written, not when a build widget changes.** Twice now
 the same shape of bug: `sync_install_commands` ran only from `collect`, which fires on a *build*
 widget, so anything that changed the plan by another route left the manifest behind. The one that
@@ -342,6 +360,41 @@ metainfo gets an install line, the review step's row says "written, but left out
 when it doesn't, and `validate`'s advice says what that costs. A hand-edited manifest that hits it
 anyway gets `build::diagnose` naming the missing field and a button to go there, rather than the
 name of a program the user has never heard of.
+
+**A Flatpak may own only its own name on the session bus, and the app's own code has to agree.**
+An app renamed for packaging — manifest `no.oyzmo.namp`, code still `com.namp.player` — builds,
+installs, appears in the menu with its icon, and then refuses to start:
+`Failed to register: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown`. That message names
+neither ID and says nothing about the two disagreeing, which is the entire problem.
+`detect::declared_application_id` reads the ID out of the source (an `application_id("…")` call or
+an `APP_ID` line, in any of the languages that spell it alike) and `validate` makes a mismatch an
+error naming both. It answers `None` whenever the source says nothing, or says two different things
+— a false alarm here sends someone editing code that was already right. Measured against the two
+real projects on this machine: namp reports `com.namp.player`, this app reports its own ID and stays
+silent.
+
+**A crate list this app can write itself, left unwritten, now blocks.** A Rust project whose list
+has not been prepared cannot build — the build has no network, and the list is what stands in for it
+— and the fix is one button on step 5. So it is an `Issue::error`: the review step refuses to write
+while it is outstanding, the step says "one thing on this page still needs an answer", and the row
+is styled as a problem rather than a note. Node and Python are deliberately *not* escalated:
+`Ecosystem::prepared_here` is what separates them, because their lists come from a tool this app
+hasn't got, and blocking someone who cannot act on it from here would only trap them. The build page
+still refuses as the last line of defence.
+
+**Only one of the four ways to start a build actually made the file.** `Options::make_bundle` puts
+`--repo=build-repo` on the build *and* needs `flatpak build-bundle` afterwards — the repository is
+written during the build, the file is made from it after. The button had both halves; the command on
+the row, the Copy button and "Open a terminal" had only the first, so a build started from any of
+those ran to the end, wrote `build-repo`, and left no file and no hint that anything was missing. (A
+user reported exactly that, on a build whose log ends "Finished.") `build::build_line` is now the one
+string all four use.
+
+**The vendored crate list writes `cargo/config.toml`, not `cargo/config`.** Cargo has wanted the
+extension since 1.39 and prints "`/run/build/<app>/cargo/config` is deprecated in favor of
+`config.toml`" twice in every build otherwise — a warning in the middle of a build someone is
+already nervous about, about a file they never wrote. Upstream's generator still uses the old name;
+both implementations here were changed together, which `tests/vendor_crosscheck.rs` enforces.
 
 **A build leaves a `.flatpak` file behind, and that is not optional-by-default.** Someone who
 presses "Build it" wants the app, not a `build-dir`. `Options::make_bundle` is on by default, which

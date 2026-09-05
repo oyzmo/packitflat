@@ -291,13 +291,12 @@ impl PifBuild {
             return;
         }
 
-        let command = build::build_command(
-            &format!("{app_id}.yml"),
-            &imp.options.borrow(),
-            imp.probe.borrow().flathub,
-        );
-        imp.command_text.replace(Some(command.as_typed()));
-        imp.command_row.set_subtitle(&command.as_typed());
+        // The whole job, not just the build: this string is what Copy copies
+        // and what "Open a terminal" runs, and it used to stop before the file
+        // was packed.
+        let command = build::build_line(&app_id, &imp.options.borrow(), imp.probe.borrow().flathub);
+        imp.command_text.replace(Some(command.clone()));
+        imp.command_row.set_subtitle(&command);
         imp.copy_command_button.set_sensitive(true);
         imp.terminal_button.set_sensitive(true);
     }
@@ -539,28 +538,12 @@ impl PifBuild {
     fn start_build(&self) {
         let app_id = self.handle().read(|project| project.manifest.app_id.trim().to_string());
         let options = self.imp().options.borrow().clone();
-        let command = build::build_command(
-            &format!("{app_id}.yml"),
-            &options,
-            self.imp().probe.borrow().flathub,
-        );
-
         // Packing the file is part of pressing "Build", not a second thing to
         // remember: the two run as one shell line so the log reads as one job.
-        let command = if options.make_bundle {
-            Command {
-                argv: vec![
-                    "sh".into(),
-                    "-c".into(),
-                    format!(
-                        "{} && {}",
-                        command.as_typed(),
-                        build::bundle_command(&app_id).as_typed()
-                    ),
-                ],
-            }
-        } else {
-            command
+        // The same line the row shows and the terminal button runs.
+        let line = build::build_line(&app_id, &options, self.imp().probe.borrow().flathub);
+        let command = Command {
+            argv: vec!["sh".into(), "-c".into(), line],
         };
 
         self.run_command(command, &t("Starting the build…"));

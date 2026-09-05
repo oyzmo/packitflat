@@ -220,6 +220,24 @@ pub fn run_command(app_id: &str) -> Command {
 
 /// Exporting takes two steps: put the build into a repository, then wrap that
 /// repository up as the single file people can pass around.
+/// The whole job as one shell line: build it, then pack what it built.
+///
+/// **Both halves, always.** `--repo=` only tells the build to write a repository
+/// as it goes; the `.flatpak` file is made from that repository afterwards by a
+/// second command, and nothing else makes it. The button had the pair; the row,
+/// the Copy button and "Open a terminal" had only the first half — so a build
+/// started from the row ran to the end, wrote `build-repo`, and left no file and
+/// no hint that anything was missing. One string now, so the four cannot
+/// disagree again.
+pub fn build_line(app_id: &str, options: &Options, flathub: Scope) -> String {
+    let build = build_command(&format!("{app_id}.yml"), options, flathub).as_typed();
+    if options.make_bundle {
+        format!("{build} && {}", bundle_command(app_id).as_typed())
+    } else {
+        build
+    }
+}
+
 pub fn export_commands(app_id: &str, options: &Options, flathub: Scope) -> Vec<Command> {
     let options = Options {
         make_bundle: true,
@@ -1899,6 +1917,38 @@ mod tests {
     /// the commands to build it and no `buildsystem:` line, so flatpak-builder
     /// used its default — autotools — and reported a missing file the project
     /// was never going to have.
+    /// The failure this prevents: a build run from the row, the Copy button or
+    /// "Open a terminal" goes all the way through, writes `build-repo`, and
+    /// leaves no `.flatpak` file — because only the button's copy of the command
+    /// had the second half. Reported by a user after a successful build.
+    #[test]
+    fn the_command_offered_packs_the_file_as_well_as_building_it() {
+        let options = Options {
+            make_bundle: true,
+            ..Options::default()
+        };
+        let line = build_line("no.oyzmo.Sample", &options, Scope::User);
+        assert!(line.contains("flatpak-builder"), "{line}");
+        assert!(line.contains("--repo=build-repo"), "{line}");
+        assert!(
+            line.contains("flatpak build-bundle build-repo no.oyzmo.Sample.flatpak no.oyzmo.Sample"),
+            "the file is never made without this: {line}"
+        );
+        assert!(line.contains(" && "), "one job, in order: {line}");
+
+        // Switched off, it is a build and nothing else.
+        let plain = build_line(
+            "no.oyzmo.Sample",
+            &Options {
+                make_bundle: false,
+                ..Options::default()
+            },
+            Scope::User,
+        );
+        assert!(!plain.contains("build-bundle"), "{plain}");
+        assert!(!plain.contains("--repo="), "{plain}");
+    }
+
     #[test]
     fn a_missing_build_system_is_named_rather_than_the_file_it_looked_for() {
         let log = "Running git lfs checkout\n\

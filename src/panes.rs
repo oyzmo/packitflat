@@ -540,13 +540,20 @@ fn dependency_group(
         .title(t(need.state()))
         .title_lines(0)
         .build();
-    state.add_prefix(&gtk::Image::from_icon_name(if need.is_ready() {
-        "object-select-symbolic"
-    } else {
-        "dialog-information-symbolic"
+    // A list this app can write itself and hasn't is a *problem*: it blocks
+    // writing the files, and the page should look like it. One that needs a tool
+    // this app hasn't got stays a note — the user cannot act on it from here, so
+    // shouting at them would be shouting at the wrong person.
+    let blocking = !need.is_ready() && need.lock_path.is_some() && ecosystem.prepared_here();
+    state.add_prefix(&gtk::Image::from_icon_name(match (need.is_ready(), blocking) {
+        (true, _) => "object-select-symbolic",
+        (false, true) => "dialog-warning-symbolic",
+        (false, false) => "dialog-information-symbolic",
     }));
-    if !need.is_ready() {
-        state.add_css_class("note-info");
+    match (need.is_ready(), blocking) {
+        (true, _) => {}
+        (false, true) => state.add_css_class("note-warning"),
+        (false, false) => state.add_css_class("note-info"),
     }
     group.add(&state);
 

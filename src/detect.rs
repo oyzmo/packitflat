@@ -254,6 +254,108 @@ fn suggest_name(dir: &Path) -> String {
 /// both are driven by flatpak-builder itself. A makefile can hide an install
 /// target behind an include or a recursive `make`, and guessing wrong there
 /// would mean warning about a build that works.
+/// The application ID the program asks the session bus for, if it says so in a
+/// way that can be read without running it.
+///
+/// **A Flatpak may only own its own app ID.** A GTK app registers its
+/// application ID on the session bus at startup, and the sandbox refuses any
+/// other name — so an app whose code says `com.example.Thing` inside a Flatpak
+/// called `no.oyzmo.Thing` installs perfectly, appears in the menu, and then
+/// dies on launch with
+/// `Failed to register: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown`,
+/// which names neither the ID nor the manifest. (Seen on a real app.)
+///
+/// Read out of the source rather than guessed: an `application_id("…")` call or
+/// a `const APP_ID = "…"` line, in Rust, Python, JavaScript or C alike, since
+/// they all spell it much the same way. `None` means nothing was found and
+/// nothing will be said — a false alarm here would send someone editing code
+/// that was already right.
+pub fn declared_application_id(dir: &Path) -> Option<String> {
+    let mut found = None;
+    for text in source_files(dir, 3) {
+        for line in text.lines() {
+            let line = line.trim();
+            if line.starts_with("//") || line.starts_with('#') || line.starts_with('*') {
+                continue;
+            }
+            if !line.contains("application_id")
+                && !line.contains("APP_ID")
+                && !line.contains("applicationId")
+            {
+                continue;
+            }
+            if let Some(id) = quoted_app_id(line) {
+                // The first one wins, and a second disagreeing one means the
+                // file is not saying anything simple enough to act on.
+                match &found {
+                    None => found = Some(id),
+                    Some(first) if *first != id => return None,
+                    Some(_) => {}
+                }
+            }
+        }
+    }
+    found
+}
+
+/// A quoted reverse-DNS name from a line, if there is exactly one.
+fn quoted_app_id(line: &str) -> Option<String> {
+    let mut ids = line
+        .split(['"', '\''])
+        .skip(1)
+        .step_by(2)
+        .map(str::trim)
+        .filter(|value| {
+            value.split('.').count() >= 3
+                && value.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-')
+                && !value.ends_with(".rs")
+                && !value.ends_with(".py")
+                && !value.ends_with(".ui")
+        });
+    let first = ids.next()?;
+    if ids.next().is_some() {
+        return None;
+    }
+    Some(first.to_string())
+}
+
+/// Source files worth reading, a few levels down, skipping the places a build
+/// leaves copies of everything.
+fn source_files(dir: &Path, depth: usize) -> Vec<String> {
+    let mut out = Vec::new();
+    collect_sources(dir, depth, &mut out);
+    out
+}
+
+fn collect_sources(dir: &Path, depth: usize, out: &mut Vec<String>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if path.is_dir() {
+            if depth == 0
+                || name.starts_with('.')
+                || matches!(
+                    name.as_str(),
+                    "target" | "build" | "dist" | "node_modules" | "vendor" | "build-dir"
+                )
+            {
+                continue;
+            }
+            collect_sources(&path, depth - 1, out);
+        } else if matches!(
+            path.extension().and_then(|e| e.to_str()),
+            Some("rs" | "py" | "js" | "c" | "cpp" | "vala")
+        ) {
+            if let Ok(text) = std::fs::read_to_string(&path) {
+                out.push(text);
+            }
+        }
+    }
+}
+
 pub fn declares_install(dir: &Path, kind: ProjectKind) -> Option<bool> {
     // The needles err towards silence on purpose: finding one means no warning,
     // so a loose match costs nothing and a missed one would cost a false alarm.

@@ -1266,6 +1266,15 @@ impl PifWindow {
 
     /// Drive the licence picker's search the way a person would.
     #[cfg(debug_assertions)]
+    pub fn dev_combo_check(&self) {
+        let project = self.dev_project("combo-check");
+        let wizard = PifWizard::new(project);
+        self.imp().nav.push(&wizard);
+        wizard.dev_combo_check();
+    }
+
+    /// Drive the licence picker's search the way a person would.
+    #[cfg(debug_assertions)]
     pub fn dev_licence_check(&self, query: &str) {
         let project = self.dev_project("licence-check");
         let wizard = PifWizard::new(project);

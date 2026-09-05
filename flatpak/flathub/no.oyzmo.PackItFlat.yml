@@ -97,8 +97,8 @@ modules:
       #   git rev-parse v<version>^{}
       - type: git
         url: https://github.com/oyzmo/packitflat.git
-        tag: v0.21.1
-        commit: 8f7eb16a8df1c2101d8037e7a7f98b2fadf163c4
+        tag: v0.23.0
+        commit: 0000000000000000000000000000000000000000
         x-checker-data:
           type: git
           tag-pattern: ^v([\d.]+)$

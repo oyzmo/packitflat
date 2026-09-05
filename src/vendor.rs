@@ -111,6 +111,18 @@ impl Ecosystem {
         }
     }
 
+    /// Whether this app can write the list itself, with no tool and no network.
+    ///
+    /// Rust's answer is already in `Cargo.lock` — every crate's address and
+    /// checksum — so it is a transcription. Node and Python are not: their lock
+    /// files don't carry enough, and the list has to come from a tool this app
+    /// hasn't got. The difference decides how hard the app leans on the user:
+    /// something it can fix in one press is worth blocking on, something it
+    /// cannot is not.
+    pub fn prepared_here(&self) -> bool {
+        matches!(self, Ecosystem::Cargo)
+    }
+
     pub fn explanation(&self) -> &'static str {
         match self {
             Ecosystem::Cargo => {
@@ -281,12 +293,17 @@ pub fn cargo_sources(lock_text: &str) -> Result<String, VendorError> {
         ));
     }
 
+    // `config.toml`, not `config`. Cargo has wanted the extension since 1.39 and
+    // warns twice on every build without it — "`/run/build/<app>/cargo/config` is
+    // deprecated in favor of `config.toml`", printed in the middle of a build
+    // someone is already nervous about. Upstream's generator still writes the old
+    // name; there is no reason to inherit the warning.
     entries.push(format!(
         "    {{\n\
          \x20       \"type\": \"inline\",\n\
          \x20       \"contents\": {contents},\n\
          \x20       \"dest\": \"cargo\",\n\
-         \x20       \"dest-filename\": \"config\"\n\
+         \x20       \"dest-filename\": \"config.toml\"\n\
          \x20   }}",
         contents = quote(CARGO_CONFIG),
     ));

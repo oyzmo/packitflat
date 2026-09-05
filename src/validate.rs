@@ -169,7 +169,44 @@ pub fn project(project: &Project) -> Vec<Issue> {
     issues.extend(dependencies(project));
     issues.extend(sources_reach_the_build_files(project));
     issues.extend(installs_what_it_builds(project));
+    issues.extend(app_id_matches_the_code(project));
     issues
+}
+
+/// The app must ask the session bus for its own name, and no other.
+///
+/// A Flatpak may only own its app ID. An app whose code registers a different
+/// one builds, installs, appears in the menu with its icon — and then refuses to
+/// start, with `Failed to register: GDBus.Error:…ServiceUnknown`, a message that
+/// names neither the ID it wanted nor the manifest it disagrees with. Nothing
+/// about it says "the two names differ", which is the whole of the problem.
+/// (Seen on a real app renamed for packaging: the manifest said `no.oyzmo.namp`
+/// and the code still said `com.namp.player`.)
+fn app_id_matches_the_code(project: &Project) -> Vec<Issue> {
+    let app_id = project.manifest.app_id.trim();
+    let Some(folder) = project.source_dir.as_deref() else {
+        return Vec::new();
+    };
+    if app_id.is_empty() {
+        return Vec::new();
+    }
+    let Some(declared) = crate::detect::declared_application_id(folder) else {
+        return Vec::new();
+    };
+    if declared == app_id {
+        return Vec::new();
+    }
+
+    vec![Issue::error(
+        Field::AppId,
+        format!("The program asks to be called “{declared}”, but this app is “{app_id}”."),
+        format!(
+            "A Flatpak is only allowed the one name. The app would install and appear in \
+             the menu, and then refuse to start with a message about ServiceUnknown. \
+             Change the ID in your own code to “{app_id}”, or set the app ID here to \
+             “{declared}” — they only have to agree."
+        ),
+    )]
 }
 
 /// A build that never installs anything compiles perfectly and then fails on its
@@ -354,19 +391,30 @@ fn dependencies(project: &Project) -> Vec<Issue> {
         .into_iter()
         .filter(|need| need.lock_path.is_some() && !need.is_ready())
         .map(|need| {
-            Issue::warning(
-                Field::Dependencies,
-                format!(
-                    "The {} this project uses haven't been written down yet.",
-                    need.ecosystem.label().to_lowercase()
-                ),
-                format!(
-                    "{} {}",
-                    need.ecosystem.explanation(),
-                    "Until that is done the build stops as soon as it tries to download \
-                     anything."
-                ),
-            )
+            let what = format!(
+                "The {} this project uses haven't been written down yet.",
+                need.ecosystem.label().to_lowercase()
+            );
+            let why = format!(
+                "{} {}",
+                need.ecosystem.explanation(),
+                "Until that is done the build stops as soon as it tries to download \
+                 anything."
+            );
+            // Where this app can write the list itself, leaving it undone is a
+            // certain failure with a one-press fix, so it blocks: nobody should
+            // reach a finished manifest and a failed build over a button they
+            // never saw. Where the list needs a tool this app hasn't got,
+            // blocking would trap someone who cannot act on it yet.
+            if need.ecosystem.prepared_here() {
+                Issue::error(
+                    Field::Dependencies,
+                    what,
+                    format!("{why} Press “Prepare the list” on that step and it is done."),
+                )
+            } else {
+                Issue::warning(Field::Dependencies, what, why)
+            }
         }),
     );
 
@@ -1086,6 +1134,94 @@ mod tests {
         assert!(issue.message.contains("home folder"));
         assert!(issue.fix.contains("file chooser"));
         assert_eq!(issue.field.step(), 5);
+    }
+
+    /// From a real app: renamed to `no.oyzmo.namp` for packaging, while its own
+    /// code still asked the session bus for `com.namp.player`. It built,
+    /// installed, appeared in the menu with its icon, and refused to start with
+    /// a message about ServiceUnknown that named neither ID.
+    #[test]
+    fn an_app_that_asks_for_a_different_name_is_caught_before_it_is_built() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("src")).unwrap();
+        std::fs::write(
+            dir.path().join("src/main.rs"),
+            "const APP_ID: &str = \"com.namp.player\";\nfn main() {}\n",
+        )
+        .unwrap();
+
+        let p = sample_project(dir.path());
+        let issues = project(&p);
+        let clash = issues
+            .iter()
+            .find(|issue| issue.message.contains("asks to be called"))
+            .expect("the mismatch is reported");
+        assert_eq!(clash.severity, Severity::Error);
+        assert_eq!(clash.field, Field::AppId);
+        assert!(clash.message.contains("com.namp.player"), "{clash:?}");
+        assert!(clash.message.contains("no.oyzmo.Sample"), "{clash:?}");
+        assert!(clash.fix.contains("ServiceUnknown"), "{clash:?}");
+    }
+
+    /// Agreement is silence, and so is a project that never says.
+    #[test]
+    fn a_matching_or_absent_id_says_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("src")).unwrap();
+        std::fs::write(
+            dir.path().join("src/main.rs"),
+            "let app = Application::builder().application_id(\"no.oyzmo.Sample\").build();\n",
+        )
+        .unwrap();
+        let p = sample_project(dir.path());
+        assert!(!project(&p).iter().any(|i| i.message.contains("asks to be called")));
+
+        std::fs::write(dir.path().join("src/main.rs"), "fn main() {}\n").unwrap();
+        let p = sample_project(dir.path());
+        assert!(!project(&p).iter().any(|i| i.message.contains("asks to be called")));
+    }
+
+    /// A Rust project whose crate list was never prepared cannot build: the
+    /// build has no network and the list is what stands in for it. This app can
+    /// write that list itself from Cargo.lock, one button, no tools — so leaving
+    /// it undone blocks, rather than letting someone reach a finished manifest
+    /// and a failed build over a button they never noticed.
+    #[test]
+    fn a_rust_project_with_no_crate_list_cannot_be_written_yet() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Cargo.toml"), "[package]\nname = \"sample\"\n").unwrap();
+        std::fs::write(dir.path().join("Cargo.lock"), "version = 3\n").unwrap();
+
+        let p = sample_project(dir.path());
+        let issues = project(&p);
+        let blocking: Vec<_> = issues
+            .iter()
+            .filter(|issue| issue.severity == Severity::Error)
+            .filter(|issue| issue.field == Field::Dependencies)
+            .collect();
+        assert_eq!(blocking.len(), 1, "{issues:#?}");
+        assert!(blocking[0].fix.contains("Prepare the list"), "{:?}", blocking[0]);
+        assert_eq!(blocking[0].field.step(), 4, "it points at the step with the button");
+    }
+
+    /// Node and Python are the other way round: the list has to come from a tool
+    /// this app hasn't got, so blocking would trap someone who cannot act on it
+    /// from here. Advice, with the command to run.
+    #[test]
+    fn a_list_this_app_cannot_write_is_advice_rather_than_a_block() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("package.json"), "{}").unwrap();
+        std::fs::write(dir.path().join("package-lock.json"), "{}").unwrap();
+
+        let p = sample_project(dir.path());
+        let issues = project(&p);
+        let about_deps: Vec<_> = issues
+            .iter()
+            .filter(|issue| issue.field == Field::Dependencies)
+            .collect();
+        assert_eq!(about_deps.len(), 1, "{issues:#?}");
+        assert_eq!(about_deps[0].severity, Severity::Warning);
+        assert!(about_deps[0].fix.contains("flatpak-node-generator"), "{:?}", about_deps[0]);
     }
 
     #[test]

@@ -84,7 +84,9 @@ def sources_for(lockfile):
             "type": "inline",
             "contents": CARGO_CONFIG,
             "dest": "cargo",
-            "dest-filename": "config",
+            # config.toml, not config: cargo has wanted the extension since 1.39
+            # and warns on every build without it.
+            "dest-filename": "config.toml",
         }
     )
     return sources

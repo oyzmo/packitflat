@@ -74,6 +74,26 @@
   </branding>
 
   <releases>
+    <release version="0.23.0" date="2026-09-05">
+      <description>
+        <p>Catch an app whose own code asks for a different name than the Flatpak: it installs, then refuses to start with a message about ServiceUnknown.</p>
+      </description>
+    </release>
+    <release version="0.22.0" date="2026-09-05">
+      <description>
+        <p>A Rust project cannot be written until its crate list is prepared — one button on the step that says so, instead of a build that fails later.</p>
+      </description>
+    </release>
+    <release version="0.21.3" date="2026-09-05">
+      <description>
+        <p>Every way of starting a build now packs the .flatpak file, and the crate list stops cargo warning about a deprecated config filename.</p>
+      </description>
+    </release>
+    <release version="0.21.2" date="2026-09-05">
+      <description>
+        <p>The build system drop-down opens when clicked again: a fix that made text-box rows skip the Tab stop was disabling every drop-down row too.</p>
+      </description>
+    </release>
     <release version="0.21.1" date="2026-09-05">
       <description>
         <p>The icon is installed even when it was chosen after the build step, and an icon already in place is taken up once the app ID is known.</p>
