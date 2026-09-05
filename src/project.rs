@@ -12,7 +12,7 @@ use std::time::SystemTime;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::detect::{self, Detection, ProjectKind};
+use crate::detect::{self, Detection};
 use crate::manifest::{Import, Manifest, ModuleEntry, SourceEntry};
 
 /// A picture for the app's store page. Stores fetch these over the web, so it is
@@ -98,9 +98,16 @@ impl Project {
         crate::runtimes::sync_build_paths(&mut manifest);
 
         let mut module = crate::manifest::Module::new(&name);
-        if detection.kind != ProjectKind::Unknown && detection.kind.buildsystem() != "simple" {
-            module.buildsystem = Some(detection.kind.buildsystem().to_string().into());
-        }
+        // Always written, `simple` included. flatpak-builder's default is
+        // **autotools**, not simple, so leaving it out of a Rust or Node module
+        // hands the build to a build system that is not there: it checks out
+        // the code and stops with "Can't find autogen, autogen.sh or
+        // bootstrap", naming nothing the user did. (A real build did exactly
+        // this, from a manifest this app wrote.) It used to be omitted here on
+        // the assumption that simple was the default, and the guided steps
+        // hid it — their `collect` sets it from the build-system list, so only
+        // a project written without visiting that step came out broken.
+        module.buildsystem = Some(detection.kind.buildsystem().to_string().into());
         module.build_commands = detection.build_commands.clone();
         module
             .sources
@@ -350,7 +357,38 @@ fn spaced_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::detect::ProjectKind;
     use crate::manifest;
+
+    /// The failure this prevents: a Rust project is detected, the commands to
+    /// build it are written, no `buildsystem:` line is — and flatpak-builder,
+    /// whose default is **autotools**, checks the code out and stops with
+    /// "Can't find autogen, autogen.sh or bootstrap". A real build of this app's
+    /// own repository did exactly that. Every kind names its build system, and
+    /// `simple` is not the exception it was assumed to be.
+    #[test]
+    fn every_detected_project_names_its_build_system() {
+        for (marker, expected) in [
+            ("Cargo.toml", "simple"),
+            ("meson.build", "meson"),
+            ("CMakeLists.txt", "cmake-ninja"),
+            ("package.json", "simple"),
+            ("Makefile", "simple"),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let src = dir.path().join("thing");
+            fs::create_dir(&src).unwrap();
+            fs::write(src.join(marker), "").unwrap();
+
+            let (project, _) = Project::from_folder(&src);
+            let module = project.manifest.main_module().unwrap();
+            let system = module
+                .buildsystem
+                .as_ref()
+                .unwrap_or_else(|| panic!("{marker}: no build system, so the build guesses autotools"));
+            assert_eq!(system.to_string(), expected, "{marker}");
+        }
+    }
 
     #[test]
     fn folder_project_is_ready_to_build_on() {

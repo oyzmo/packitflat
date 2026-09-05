@@ -82,9 +82,12 @@ if f'version="{new}"' not in text:
 # making the tag knows it.
 flathub = pathlib.Path("flatpak/flathub/no.oyzmo.PackItFlat.yml")
 if flathub.exists():
-    flathub.write_text(
-        re.sub(r"^(\s*tag: )v[\d.]+$", rf"\g<1>v{new}", flathub.read_text(), flags=re.M)
-    )
+    text = re.sub(r"^(\s*tag: )v[\d.]+$", rf"\g<1>v{new}", flathub.read_text(), flags=re.M)
+    # And blank the commit the old tag pointed at. Leaving it would pair a new
+    # tag with an old revision — a submission that silently builds the previous
+    # release. Zeros are obviously unfilled; a real-looking SHA is not.
+    text = re.sub(r"^(\s*commit: )[0-9a-f]{40}$", r"\g<1>" + "0" * 40, text, flags=re.M)
+    flathub.write_text(text)
 PY
 
 # The crate list embeds this package's own version, and makeflatpak.sh only

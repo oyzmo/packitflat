@@ -280,6 +280,17 @@ impl Source {
         }
     }
 
+    /// One file carried into the build beside the code. `dest` is the folder it
+    /// lands in, needed whenever the file belongs somewhere other than the top.
+    pub fn file(path: impl Into<String>, dest: Option<String>) -> Self {
+        Source {
+            kind: SourceKind::File,
+            path: Some(path.into()),
+            dest,
+            ..Source::default()
+        }
+    }
+
     /// What to show in a list: the useful half of the entry, not the type name.
     pub fn label(&self) -> String {
         match (&self.path, &self.url) {

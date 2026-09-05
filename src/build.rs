@@ -951,6 +951,29 @@ pub fn diagnose(project: &Project, log: &str, exit_code: i32, flathub: Scope) ->
         };
     }
 
+    // No build system named, so flatpak-builder used its default — autotools —
+    // on a project that has never heard of it. The message names a file the
+    // project was never going to have, and says nothing about the real cause.
+    // Wording copied verbatim from flatpak-builder 1.4.10:
+    //   Error: module selfclone: Can't find autogen, autogen.sh or bootstrap
+    if let Some(line) = find(log, &["can't find autogen"]) {
+        return Diagnosis {
+            headline: "No build system was chosen".into(),
+            detail: "With nothing chosen, flatpak-builder assumes the project is built \
+                     the way old C programs are, and looks for a file called autogen.sh \
+                     to start it off. Your project doesn't have one, and doesn't need \
+                     one. Choosing how it is built — for Rust, Node and anything else \
+                     that spells its build out, that is “Commands I write myself” — \
+                     puts one line in the manifest and this goes away."
+                .into(),
+            fix: Some(Fix::Elsewhere {
+                label: "Choose how it's built".into(),
+                field: Some(crate::validate::Field::BuildSystem),
+            }),
+            excerpt: line,
+        };
+    }
+
     // Missing runtime or SDK.
     if let Some(line) = find(log, &["unable to find sdk", "unable to find runtime"]) {
         let refs = required_refs(project);
@@ -1871,6 +1894,27 @@ mod tests {
     /// category, then a description, and each time the whole build failed at the
     /// finish stage on a one-word code. The last line is all a beginner sees,
     /// and it names a program they have never heard of.
+    /// Copied verbatim out of flatpak-builder 1.4.10, from a real build of this
+    /// app's own repository against a manifest this app wrote. The manifest had
+    /// the commands to build it and no `buildsystem:` line, so flatpak-builder
+    /// used its default — autotools — and reported a missing file the project
+    /// was never going to have.
+    #[test]
+    fn a_missing_build_system_is_named_rather_than_the_file_it_looked_for() {
+        let log = "Running git lfs checkout\n\
+                   Error: module selfclone: Can't find autogen, autogen.sh or bootstrap\n";
+        let diagnosis = diagnose(&project(), log, 1, Scope::User);
+
+        assert_eq!(diagnosis.headline, "No build system was chosen");
+        assert!(diagnosis.detail.contains("autogen.sh"), "{}", diagnosis.detail);
+        match diagnosis.fix.unwrap() {
+            Fix::Elsewhere { field, .. } => {
+                assert_eq!(field, Some(crate::validate::Field::BuildSystem))
+            }
+            other => panic!("expected somewhere to go, got {other:?}"),
+        }
+    }
+
     #[test]
     fn an_app_listing_the_build_refuses_names_the_field_rather_than_the_tool() {
         let log = "Committing stage finish to cache\n\

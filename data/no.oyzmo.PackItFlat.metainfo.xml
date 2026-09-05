@@ -74,6 +74,11 @@
   </branding>
 
   <releases>
+    <release version="0.21.0" date="2026-09-05">
+      <description>
+        <p>A manifest written for a project fetched from Git now names its build system and carries the files it installs, so the build works instead of guessing autotools.</p>
+      </description>
+    </release>
     <release version="0.20.1" date="2026-09-05">
       <description>
         <p>Ready for a Flathub submission: screenshots and an https homepage in the app information, and the submission manifest kept in step with the one built here.</p>

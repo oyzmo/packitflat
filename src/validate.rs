@@ -765,6 +765,22 @@ fn manifest(manifest: &Manifest) -> Vec<Issue> {
         ));
     }
 
+    // The default is autotools, which almost nobody means. A module with
+    // commands of its own and no build system named gets handed to a build
+    // system that isn't there, and the build stops on "Can't find autogen,
+    // autogen.sh or bootstrap" — a sentence about a file the project never had.
+    if module.buildsystem.is_none() && !module.build_commands.is_empty() {
+        issues.push(Issue::error(
+            Field::BuildSystem,
+            "No build system is chosen, so the build would guess wrongly.",
+            "Choose one. With nothing chosen, flatpak-builder assumes the project \
+             is built with autotools and looks for an autogen.sh that isn't there \
+             — even though the commands to build it are right here. Projects that \
+             spell their build out in commands, like Rust and Node, want \
+             “Commands I write myself”.",
+        ));
+    }
+
     if module.sources.is_empty() {
         issues.push(Issue::error(
             Field::Sources,

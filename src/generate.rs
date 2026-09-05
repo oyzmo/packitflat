@@ -247,6 +247,20 @@ pub fn sync_install_commands(project: &mut Project) {
     sync_install_commands_with(project, &plan);
 }
 
+/// Whether the build is handed the folder these files are written into.
+///
+/// A `dir` source is: the build copies that folder, so anything written beside
+/// the manifest is in the build. Git and archive sources are not.
+fn module_takes_a_local_folder(project: &Project) -> bool {
+    project.manifest.main_module().is_some_and(|module| {
+        module.sources.iter().any(|entry| {
+            entry
+                .as_source()
+                .is_some_and(|source| source.kind == crate::manifest::SourceKind::Dir)
+        })
+    })
+}
+
 /// The same against a plan somebody has since changed — the review step's
 /// switches, in practice.
 ///
@@ -288,6 +302,32 @@ pub fn sync_install_commands_with(project: &mut Project, plan: &Plan) {
         }
     }
 
+    // Which of those files the build will actually be able to see. A `dir`
+    // source hands the build the folder these files are written into, so they
+    // are simply there. A git or archive source does not: the build fetches the
+    // code from somewhere else, and a file this app wrote a moment ago exists
+    // only on this computer. The build then compiles everything and stops on
+    // `install: cannot stat 'app.desktop'` — measured, against this app's own
+    // repository. Each one becomes a `file` source so it travels with the
+    // manifest.
+    let carried: Vec<(PathBuf, Option<String>)> = if module_takes_a_local_folder(project) {
+        Vec::new()
+    } else {
+        plan.files
+            .iter()
+            .filter(|file| file.include && file.kind != FileKind::Manifest)
+            .filter(|file| install_destination(file.kind, &app_id, &file.relative).is_some())
+            .map(|file| {
+                let dest = file
+                    .relative
+                    .parent()
+                    .filter(|parent| !parent.as_os_str().is_empty())
+                    .map(|parent| parent.display().to_string());
+                (file.relative.clone(), dest)
+            })
+            .collect()
+    };
+
     let Some(module) = project.manifest.main_module_mut() else {
         return;
     };
@@ -295,6 +335,23 @@ pub fn sync_install_commands_with(project: &mut Project, plan: &Plan) {
     // itself isn't installed either, and inventing half a build would be worse.
     if module.build_commands.is_empty() {
         return;
+    }
+
+    for (relative, dest) in carried {
+        let path = relative.display().to_string();
+        let already = module.sources.iter().any(|entry| {
+            entry
+                .as_source()
+                .and_then(|source| source.path.as_deref())
+                .is_some_and(|existing| existing == path)
+        });
+        if !already {
+            module
+                .sources
+                .push(crate::manifest::SourceEntry::Source(
+                    crate::manifest::Source::file(path, dest),
+                ));
+        }
     }
 
     // A line is judged by where it installs *to*, so editing the source path on
@@ -549,6 +606,87 @@ mod tests {
         sync_install_commands(&mut project);
         let commands = &project.manifest.main_module().unwrap().build_commands;
         assert!(!commands.iter().any(|c| c.contains("/app/share/metainfo/")), "{commands:#?}");
+    }
+
+    /// The failure this prevents: a project started from a Git address builds
+    /// its code from the repository, so the desktop entry, metainfo and icon
+    /// this app writes into the folder are not in the build at all. It compiles
+    /// everything and then stops on `install: cannot stat 'app.desktop'`. A real
+    /// build of this app's own repository did exactly that.
+    #[test]
+    fn files_written_here_travel_with_a_build_that_fetches_its_code() {
+        let dir = tempfile::tempdir().unwrap();
+        let icon = dir.path().join("icon.svg");
+        std::fs::write(&icon, svg_bytes()).unwrap();
+
+        let mut project = project_in(dir.path());
+        project.icon_source = Some(icon);
+        project.description = "A few sentences about it.".into();
+        project.categories = vec!["Utility".into()];
+        let module = project.manifest.main_module_mut().unwrap();
+        module.buildsystem = Some(crate::manifest::BuildSystem::Simple);
+        module.build_commands = vec!["install -Dm755 sample /app/bin/sample".into()];
+        // The code comes from a repository, not from this folder.
+        module.sources = vec![crate::manifest::SourceEntry::Source(crate::manifest::Source {
+            kind: crate::manifest::SourceKind::Git,
+            url: Some("https://example.com/sample.git".into()),
+            commit: Some("f".repeat(40)),
+            ..Default::default()
+        })];
+
+        sync_install_commands(&mut project);
+        let module = project.manifest.main_module().unwrap();
+        let carried: Vec<String> = module
+            .sources
+            .iter()
+            .filter_map(|entry| entry.as_source())
+            .filter(|source| source.kind == crate::manifest::SourceKind::File)
+            .map(|source| source.path.clone().unwrap_or_default())
+            .collect();
+
+        assert!(carried.iter().any(|p| p.ends_with(".desktop")), "{carried:#?}");
+        assert!(carried.iter().any(|p| p.ends_with(".metainfo.xml")), "{carried:#?}");
+        let icon = module
+            .sources
+            .iter()
+            .filter_map(|entry| entry.as_source())
+            .find(|source| source.path.as_deref().is_some_and(|p| p.ends_with(".svg")))
+            .expect("the icon travels too");
+        // Without `dest` it would land at the top and the install line, which
+        // names the folder it belongs in, would miss it.
+        assert_eq!(icon.dest.as_deref(), Some("icons/hicolor/scalable/apps"));
+
+        // Running twice adds nothing a second time.
+        sync_install_commands(&mut project);
+        let files = project
+            .manifest
+            .main_module()
+            .unwrap()
+            .sources
+            .iter()
+            .filter_map(|entry| entry.as_source())
+            .filter(|source| source.kind == crate::manifest::SourceKind::File)
+            .count();
+        assert_eq!(files, 3, "one entry each, not two");
+    }
+
+    /// A folder source already hands the build everything written beside the
+    /// manifest, so carrying the same files again would be noise.
+    #[test]
+    fn a_folder_build_carries_nothing_extra() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut project = project_in(dir.path());
+        project.description = "A few sentences about it.".into();
+        project.categories = vec!["Utility".into()];
+        let module = project.manifest.main_module_mut().unwrap();
+        module.buildsystem = Some(crate::manifest::BuildSystem::Simple);
+        module.build_commands = vec!["install -Dm755 sample /app/bin/sample".into()];
+        module.sources = vec![crate::manifest::SourceEntry::Source(
+            crate::manifest::Source::dir("."),
+        )];
+
+        sync_install_commands(&mut project);
+        assert_eq!(project.manifest.main_module().unwrap().sources.len(), 1);
     }
 
     /// Unticking a file on the review step takes its install line out with it: a

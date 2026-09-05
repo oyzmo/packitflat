@@ -280,6 +280,28 @@ added the lines. Its bundle held `bin/namp` and a licence, nothing else. `sync_i
 also runs in `window::open_project`, the one path into the project view, so a manifest is put right
 as it is opened and the review step's preview is telling the truth before anything is pressed.
 
+**flatpak-builder's default build system is `autotools`, not `simple`.** `Project::from_folder`
+used to omit the `buildsystem:` line whenever it would have said `simple`, on the assumption that
+simple was the default. It is not: a Rust module with the commands to build it and no build system
+named is handed to autotools, which checks the code out and stops with `Can't find autogen,
+autogen.sh or bootstrap` — a sentence about a file the project never had, naming nothing the user
+did. The guided steps hid it, because their `collect` sets the build system from the list, so only a
+project written without visiting that step came out broken. Every detected kind now names its build
+system, `simple` included; `validate` makes it an error when a module has commands and no build
+system; and `build::diagnose` translates the autogen line. (Found by building this app's own
+repository from a manifest this app wrote.)
+
+**A build that fetches its code cannot see the files written next to the manifest.** With a `dir`
+source the build is handed the project folder, so the desktop entry, metainfo and icon are simply
+there — which is why this never showed up until "Start from a Git address" was used in anger. With a
+git or archive source the build fetches the code from somewhere else, and those three files exist
+only on the user's computer: the build compiles everything, then stops on `install: cannot stat
+'app.desktop'`. `sync_install_commands_with` now adds each of them as a `type: file` source when the
+module has no `dir` source, with `dest:` for the icon so it lands in
+`icons/hicolor/scalable/apps/` where its install line expects it. Both halves were measured against
+flatpak-builder 1.4.10 before being written: a `file` source does travel with a git source, and
+without `dest` the icon lands at the top and the install line misses it.
+
 **An icon the app itself put in the project was forgotten the moment the project was reopened.** The
 manifest has nowhere to record which picture was chosen, so `icon_source` came back `None`, the icon
 dropped out of the plan, and with it went the line that installs it. `icons::existing` reads the
